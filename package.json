@@ -1,0 +1,59 @@
+{
+  "name": "zetta-app",
+  "description": "Zetta Toolkit - JSON RPC over TLS",
+  "version": "0.0.1",
+  "author": {
+    "name": "ASPECTRON Inc.",
+    "email": "info@aspectron.com"
+  },
+  "dependencies": {
+    "zetta-utils": "*",
+    "zetta-stats" : "*",
+    "zetta-rpc" : "*",
+    "getmac" : "*",
+    "underscore" : "*",
+    "mongodb" : "*",
+    "connect-mongo" : "*",
+    "express" : "*",
+    "connect" : "*",
+    "socket.io" : "*",
+    "ejs" : "*",
+    "basic-auth" : "*",
+    "express-session" : "*",
+    "cookie-session" : "*",
+    "express-session" : "*",
+    "body-parser" : "*",
+    "cookie-parser" : "*",
+    "method-override" : "*",
+    "serve-static" : "*",
+    "errorhandler" : "*"
+  },
+  "keywords": [
+    "utilities",
+    "framework",
+    "json",
+    "rpc",
+    "zetta"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/aspectron/zetta-rpc"
+  },
+  "main": "zetta-app",
+  "files": [
+    "zetta-app.js",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublish": "npm prune"
+  },
+  "engines": {
+    "node": "*"
+  },
+  "readmeFilename": "README.md",
+  "bugs": {
+    "url": "https://github.com/aspectron/zetta-rpc/issues"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/aspectron/zetta-rpc"
+}
