@@ -24,10 +24,7 @@ var mongo = require('mongodb');
 
 // temporary hack while working on translation module
 var os = require('os');
-if (os.hostname() == 'CARBIDE-ALPHA') 
-    var translator = require('../translation');
-else
-    var translator = require('translation');
+var translator = require('zetta-translator');
 
 
 function getConfig(name) {
@@ -250,7 +247,7 @@ function Application(appFolder, appConfig) {
             var ServeStatic = require('serve-static');
             _.each(self.config.http.static, function(dst, src) {
                 console.log('HTTP serving '+src.cyan.bold+' -> '+dst.cyan.bold);
-                self.app.use('src', ServeStatic(path.join(appFolder, dst)));
+                self.app.use(src, ServeStatic(path.join(appFolder, dst)));
             })
         }
 
