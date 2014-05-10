@@ -25,7 +25,7 @@ var mongo = require('mongodb');
 // temporary hack while working on translation module
 var os = require('os');
 //var translator = require('zetta-translator');
-var Translator = require('../zetta-translator');
+var Translator = require('zetta-translator');
 
 
 function getConfig(name) {
