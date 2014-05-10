@@ -68,12 +68,16 @@ function Application(appFolder, appConfig) {
     if(self.config.translator)
         self.translator = new Translator({ storagePath : path.join(appFolder,'config') });
 
-    http.globalAgent.maxSockets = self.config.maxSockets || 1024; // 1024;
-    https.globalAgent.maxSockets = self.config.maxSockets || 1024;
-    if(process.platform != 'win32') {
-        try { require('posix').setrlimit('nofile', self.config.socket_limit); } catch(ex) {
-            console.error(ex.stack);
+    http.globalAgent.maxSockets = self.config.maxHttpSockets || 1024; // 1024;
+    https.globalAgent.maxSockets = self.config.maxHttpSockets || 1024;
+    if(process.platform != 'win32' && self.config.maxSockets) {
+        if(fs.existsSync('node_modules/posix')) {
+            try { require('posix').setrlimit('nofile', self.config.maxSockets); } catch(ex) {
+                console.error(ex.stack);
+            }
         }
+        else
+            console.log("WARNING - Please install POSIX module (npm install posix)".red.bold);
     }
 
     self.pingDataObject = { }
