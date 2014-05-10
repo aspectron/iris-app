@@ -24,7 +24,8 @@ var mongo = require('mongodb');
 
 // temporary hack while working on translation module
 var os = require('os');
-var translator = require('zetta-translator');
+//var translator = require('zetta-translator');
+var Translator = require('../zetta-translator');
 
 
 function getConfig(name) {
@@ -65,7 +66,7 @@ function Application(appFolder, appConfig) {
         zutils.render(self.config.caption);
 
     if(self.config.translator)
-        self.translator = translator;
+        self.translator = new Translator({ storagePath : path.join(appFolder,'config') });
 
     http.globalAgent.maxSockets = self.config.maxSockets || 1024; // 1024;
     https.globalAgent.maxSockets = self.config.maxSockets || 1024;
@@ -129,8 +130,10 @@ function Application(appFolder, appConfig) {
 
         var dbconf = self.databaseConfig;
 
-        if (typeof(dbconf) == 'string')
-            dbconf = [ dbconf ];
+        //if (typeof(dbconf) == 'string')
+        //    dbconf = [ dbconf ];
+
+
 
         console.log("Connecting to database...".bold);
 
@@ -142,36 +145,36 @@ function Application(appFolder, appConfig) {
         function initDatabaseConnection() {
             var config = dbconf.shift();
             if (!config)
-                return finish();
+                return callback();
+
+
 
             var name = config.config;// || config.alias;
-            if (typeof(self.config.db) != 'object' || !self.config.db[name]) {
+            
+            /*if (typeof(self.config.db) != 'object' || !self.config.db[name]) {
                 console.error(("Unable to find DB configuration for " + name).red.bold);
                 return callback(new Error("Unable to find DB configuration (Update local config file!)"));
-            }
+            }*/
 
-            mongo.Db.connect(self.config.db[name], function (err, database) {
+
+            var db = self.config.mongodb[name];
+
+            if(!db)
+                throw new Error("Config missing database configuration for '"+name+"'");
+
+            mongo.Db.connect(db, function (err, database) {
                 if (err)
                     return callback(err);
 
                 self.databases[name] = database;
 
-                console.log("DB '" + (name) + "' connected", self.config.db[name]);
+                console.log("DB '" + (name) + "' connected", self.config.mongodb[name]);
                 zutils.bind_database_config(database, config.collections, function (err, db) {
                     if (err)
                         return callback(err);
                     _.extend(self.db, db);
                     initDatabaseConnection();
                 })
-            })
-        }
-
-        function finish() {
-            self.databases['main'].createCollection('msg', { capped: true, size: self.config.msg_db_max_size, max: self.config.msg_db_max_count }, function (err, collection) {
-                if (err)
-                    return callback(err);
-                self.db.msg = collection;
-                callback();
             })
         }
     }
@@ -221,7 +224,7 @@ function Application(appFolder, appConfig) {
 
         if(self.config.mongodb) {
             var MongoStore = require('connect-mongo')(ExpressSession);
-            self.app.sessionStore = new MongoStore({url: self.config.mongodb});
+            self.app.sessionStore = new MongoStore({url: self.config.mongodb.main || self.config.mongodb});
             self.app.use(ExpressSession({
                 secret: self.config.session.secret,
                 key: self.config.session.key,
@@ -239,7 +242,8 @@ function Application(appFolder, appConfig) {
             }));
         }
 
-        self.app.use(translator.useSession);
+        if(self.config.translator)
+            self.app.use(self.translator.useSession);
 
         if(self.router)
             self.router.init(self.app);
@@ -276,8 +280,8 @@ function Application(appFolder, appConfig) {
 */
 
         if(self.config.translator) {
-            translator.init(self.config.translator, function () {
-                translator.separateEditor();
+            self.translator.init(self.config.translator, function () {
+                self.translator.separateEditor();
                 finish();
             });
 
@@ -395,7 +399,7 @@ function Application(appFolder, appConfig) {
         self.config.statsd && steps.push(self.initMonitoringInterfaces);
         self.config.mongodb && self.databaseConfig && steps.push(self.initDatabaseConfig);
         self.config.mongodb && self.databaseCollections && steps.push(self.initDatabaseCollections);
-        self.emit('init::database');
+        self.emit('init::database', steps);
         if(self.config.http) {
             steps.push(self.initExpress);
             steps.push(self.initHttpServer);
