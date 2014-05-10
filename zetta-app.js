@@ -245,6 +245,20 @@ function Application(appFolder, appConfig) {
         if(self.config.translator)
             self.app.use(self.translator.useSession);
 
+
+        self.app.use(function(req, res, next) {
+            res.sendHttpError = function (error) {
+                res.status(error.status);
+                if (res.req.headers['x-requested-with'] == 'XMLHttpRequest') {
+                    res.json(error);
+                } else {
+                    res.render("error", {error: error});
+                }
+            };
+
+            next();
+        })
+
         if(self.router)
             self.router.init(self.app);
 
@@ -259,7 +273,7 @@ function Application(appFolder, appConfig) {
         }
 
 //        self.app.get('/', ServeStatic(path.join(appFolder, 'http/')));
-/*
+
         self.app.use(function (err, req, res, next) {
             if (typeof err == 'number') {
                 err = new HttpError(err);
@@ -277,7 +291,7 @@ function Application(appFolder, appConfig) {
                 }
             }
         });
-*/
+
 
         if(self.config.translator) {
             self.translator.init(self.config.translator, function () {
