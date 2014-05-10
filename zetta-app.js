@@ -14,9 +14,9 @@ var socketio = require("socket.io");
 var path = require('path');
 // var colors = require('colors');
 
-var zutils = require('../zetta-utils');
+var zutils = require('zetta-utils');
 var zstats = require('zetta-stats');
-var zrpc = require('../zetta-rpc');
+var zrpc = require('zetta-rpc');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var mongo = require('mongodb');
@@ -60,6 +60,9 @@ function Application(appFolder, appConfig) {
 
     if(!self.config.application)
         throw new Error("Application() requires 'application' attribute in the config");
+
+    if(self.config.caption)
+        zutils.render(self.config.caption);
 
     if(self.config.translator)
         self.translator = translator;
