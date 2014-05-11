@@ -24,8 +24,69 @@ var mongo = require('mongodb');
 
 // temporary hack while working on translation module
 var os = require('os');
+var child_process = require('child_process');
 //var translator = require('zetta-translator');
 var Translator = require('zetta-translator');
+
+
+function Bash(options)
+{
+    var self = this;
+    self.options = options;
+    self.relaunch = true;
+
+    self.terminate = function() {
+        if(self.process) {
+            self.relaunch = false;
+            self.process.kill('SIGTERM');
+            delete self.process;
+        }
+        else
+            console.error("Unable to terminate process, no process present");
+    }
+
+    self.restart = function() {
+        if(self.process) {
+            self.process.kill('SIGTERM');
+        }
+    }
+
+    self.run = function() {
+
+        if(self.process) {
+            console.error(self.options);
+            throw new Error("Process is already running!");
+        }
+
+        self.relaunch = true;
+        self.process = child_process.spawn('bash',['--verbose']);
+
+        self.process.stdout.on('data',function (data) {
+            process.stdout.write(data);
+            options.stdout(data);
+
+        });
+
+        self.process.stderr.on('data',function (data) {
+            process.stderr.write(data);
+            options.stdout(data);
+        });
+
+        self.process.on('exit',function (code) {
+            if(code) {
+                console.log("BASH exited with code "+code);
+            }
+
+            delete self.process;
+
+            if(self.relaunch) {
+                console.log("Restarting BASH");
+                dpc(self.run, options.restart_delay || 0);
+            }
+        });
+    }
+}
+
 
 
 function getConfig(name) {
@@ -33,17 +94,35 @@ function getConfig(name) {
     var host_filename = name+'.'+os.hostname()+'.conf';
     var filename = name+'.conf';
 
-    var data = undefined;
+    var data = [ ]; // undefined;
 
-    if(fs.existsSync(host_filename)) {
-        data = fs.readFileSync(host_filename);
-    }
-    else {
-        data = fs.readFileSync(filename);
+    if(fs.existsSync(filename))
+        data.push(fs.readFileSync(filename) || null);
+    if(fs.existsSync(host_filename))
+        data.push(fs.readFileSync(host_filename) || null);
+
+    if(!data[0] && !data[1])
+        throw new Error("Unable to read config file:",(filename+'').magenta.bold)
+    function merge(dst, src) {
+        _.each(src, function(v, k) {
+            if(_.isArray(v)) { if(!dst[k]) dst[k] = [ ]; console.log((k||'').cyan.bold, "ARRAY"); merge(dst[k], v); }
+            else if(_.isObject(v)) { if(!dst[k]) dst[k] = { };  console.log((k||'').cyan.bold, "OBJECT"); merge(dst[k], v); }
+            else { if(_.isArray(src)) dst.push(v); else dst[k] = v; console.log(k, "VALUE"); }
+        })
     }
 
-//  console.log(data.toString('utf-8'));
-    return eval('('+data.toString('utf-8')+')');
+    var o = { }
+    _.each(data, function(conf) {
+        if(!conf || !conf.toString('utf-8').length)
+            return;
+        var layer = eval('('+conf.toString('utf-8')+')');
+        console.log(layer);
+        merge(o, layer);
+    })
+
+    console.log(o);
+
+    return o;
 }
 
 
@@ -278,23 +357,27 @@ function Application(appFolder, appConfig) {
 
 //        self.app.get('/', ServeStatic(path.join(appFolder, 'http/')));
 
-        self.app.use(function (err, req, res, next) {
-            if (typeof err == 'number') {
-                err = new HttpError(err);
-            }
-
-            if (err instanceof HttpError) {
-                res.sendHttpError(err);
-            } else {
-                if (self.config.env == 'development') {
-                    ErrorHandler()(err, req, res, next);
-                } else {
-                    log.error(err);
-                    err = new HttpError(500);
-                    res.sendHttpError(err);
+//        self.on('init::http::done', function() {
+    
+            self.app.use(function (err, req, res, next) {
+                if (typeof err == 'number') {
+                    err = new HttpError(err);
                 }
-            }
-        });
+
+                if (err instanceof HttpError) {
+                    res.sendHttpError(err);
+                } else {
+                    if (self.config.env == 'development') {
+                        ErrorHandler()(err, req, res, next);
+                    } else {
+                        log.error(err);
+                        err = new HttpError(500);
+                        res.sendHttpError(err);
+                    }
+                }
+            });
+    
+//        })
 
 
         if(self.config.translator) {
@@ -343,6 +426,7 @@ function Application(appFolder, appConfig) {
         if(self.router && self.router.initWebSocket)
             self.router.initWebSocket(self.io);
         self.emit('init::websockets');
+        self.emit('init::http::done');
         https_server.listen(self.config.http.port, function (err) {
             if (err) {
                 console.error("Unable to start HTTP(S) server on port" + self.config.http.port);
@@ -367,7 +451,7 @@ function Application(appFolder, appConfig) {
     self.initSupervisors = function(callback) {
         if(!self.certificates)
             throw new Error("Application supervisor requires configured certificates");
-        console.log("Connecting to supervisor(s)...".bold);
+        console.log("Connecting to supervisor(s)...".bold, self.config.supervisor.address);
         self.rpc = new zrpc.Client({
             address: self.config.supervisor.address,
             auth: self.config.supervisor.auth,
@@ -397,6 +481,22 @@ function Application(appFolder, appConfig) {
         })
     }
 
+    self.initBash = function(callback) {
+        self.bash = new Bash({
+            stdout : function(data) {
+                self.rpc.dispatch({
+                    op : 'console',
+                    data : data.toString('utf-8')
+                })
+            }
+        })
+
+        // if(process.platform != 'win32')
+            dpc(function(){
+                self.bash.run();
+            })
+    }
+
     // --
 
     function updateServerStats() {
@@ -424,6 +524,7 @@ function Application(appFolder, appConfig) {
         }
         //self.config.mailer && steps.push(initMailer);
         self.config.supervisor && self.config.supervisor.address && steps.push(self.initSupervisors);
+        self.config.supervisor && self.config.supervisor.console && steps.push(self.initBash);
         getmac.getMac(function (err, mac) {
             if (err) return callback(err);
             self.mac = mac.split(process.platform == 'win32' ? '-' : ':').join('').toLowerCase();
