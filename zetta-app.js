@@ -1,4 +1,28 @@
 #!/usr/bin/env node
+//
+// -- Zetta Toolkit - Application Framework
+//
+//  Copyright (c) 2011-2014 ASPECTRON Inc.
+//  All Rights Reserved.
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+// 
+//  The above copyright notice and this permission notice shall be included in
+//  all copies or substantial portions of the Software.
+// 
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE SOFTWARE.
+//
 
 var _ = require('underscore');
 var fs = require('fs');
@@ -28,6 +52,12 @@ var child_process = require('child_process');
 //var translator = require('zetta-translator');
 var Translator = require('zetta-translator');
 
+var _cl = console.log;
+console.log = function() {
+    var args = Array.prototype.slice.call(arguments, 0);
+    args.unshift(zutils.tsString()+' ');
+    return _cl.apply(console, args);
+}
 
 function Bash(options)
 {
@@ -105,9 +135,9 @@ function getConfig(name) {
         throw new Error("Unable to read config file:",(filename+'').magenta.bold)
     function merge(dst, src) {
         _.each(src, function(v, k) {
-            if(_.isArray(v)) { if(!dst[k]) dst[k] = [ ]; console.log((k||'').cyan.bold, "ARRAY"); merge(dst[k], v); }
-            else if(_.isObject(v)) { if(!dst[k]) dst[k] = { };  console.log((k||'').cyan.bold, "OBJECT"); merge(dst[k], v); }
-            else { if(_.isArray(src)) dst.push(v); else dst[k] = v; console.log(k, "VALUE"); }
+            if(_.isArray(v)) { if(!dst[k]) dst[k] = [ ]; merge(dst[k], v); }
+            else if(_.isObject(v)) { if(!dst[k]) dst[k] = { };  merge(dst[k], v); }
+            else { if(_.isArray(src)) dst.push(v); else dst[k] = v; }
         })
     }
 
@@ -116,11 +146,8 @@ function getConfig(name) {
         if(!conf || !conf.toString('utf-8').length)
             return;
         var layer = eval('('+conf.toString('utf-8')+')');
-        console.log(layer);
         merge(o, layer);
     })
-
-    console.log(o);
 
     return o;
 }
@@ -129,6 +156,8 @@ function getConfig(name) {
 function Application(appFolder, appConfig) {
     var self = this;
     events.EventEmitter.call(this);
+
+    self.appFolder = appFolder;
 
     if(_.isString(appConfig))
         self.config = getConfig(path.join(appFolder,'config', appConfig));
@@ -482,6 +511,8 @@ function Application(appFolder, appConfig) {
     }
 
     self.initBash = function(callback) {
+console.log("init::BASH".cyan.bold);
+
         self.bash = new Bash({
             stdout : function(data) {
                 self.rpc.dispatch({
@@ -495,6 +526,8 @@ function Application(appFolder, appConfig) {
             dpc(function(){
                 self.bash.run();
             })
+
+        callback && callback();
     }
 
     // --
@@ -532,12 +565,13 @@ function Application(appFolder, appConfig) {
             self.emit('init::build', steps);
 
             steps.run(function (err) {
+console.log("init::run".cyan.bold);
                 if (err)
                     throw err;
 
                 self.config.statsd && updateServerStats();
-                self.emit('init::done');
                 console.log("init OK".bold);
+                self.emit('init::done');
                 callback && callback();
             })
 
