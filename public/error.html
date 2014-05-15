@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>{title} Error</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            outline: 0;
+        }
+
+        body {
+            padding: 80px 100px;
+            font: 13px "Helvetica Neue", "Lucida Grande", "Arial";
+            background: #ECE9E9 -webkit-gradient(linear, 0% 0%, 0% 100%, from(#fff), to(#ECE9E9));
+            background: #ECE9E9 -moz-linear-gradient(top, #fff, #ECE9E9);
+            background-repeat: no-repeat;
+            color: #555;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2 {
+            font-size: 22px;
+            color: #343434;
+        }
+        h1 {
+            font-size: 60px;
+        }
+        h2 {
+            margin-top: 10px;
+        }
+        ul {
+            margin: 10px;
+        }
+        ul li {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        p {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<h2>Sorry, an error occurred</h2>
+{errors}
+</body>
+</html>

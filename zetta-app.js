@@ -286,7 +286,7 @@ function Application(appFolder, appConfig) {
 
 
             var name = config.config;// || config.alias;
-            
+
             /*if (typeof(self.config.db) != 'object' || !self.config.db[name]) {
                 console.error(("Unable to find DB configuration for " + name).red.bold);
                 return callback(new Error("Unable to find DB configuration (Update local config file!)"));
@@ -382,13 +382,42 @@ function Application(appFolder, appConfig) {
             self.app.use(self.translator.useSession);
 
 
+        /**
+         * response = {
+         *  status: {Number}
+         *  errors: {String | Array}
+         * }
+         */
         self.app.use(function(req, res, next) {
-            res.sendHttpError = function (error) {
-                res.status(error.status);
-                if (res.req.headers['x-requested-with'] == 'XMLHttpRequest') {
-                    res.json(error);
+            res.sendHttpError = function (response) {
+                res.status(response.status);
+                if (req.xhr) {
+                    res.json({errors: _.isArray(response.errors) ? response.errors : [response.errors]});
                 } else {
-                    res.render("error", {error: error});
+                    res.render("error", {errors: response.errors}, function (err, html) {
+                        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+
+                        if (err) {
+                            fs.readFile(__dirname + '/public/error.html', 'utf8', function(e, content){
+                                var errors;
+                                if (_.isArray(response.errors)) {
+                                    errors = response.errors.map(function(error){ return '<li>' + _.escape(error) + '</li>'; }).join('');
+
+                                    errors = '<ul>' + errors + '</ul>';
+                                } else {
+                                    errors = '<p>' + _.escape(response.errors) + '</p>';
+                                }
+
+                                html = content
+                                    .replace('{errors}', errors)
+                                    .replace('{title}', self.app.locals.title ? self.app.locals.title : '');
+
+                                res.end(html);
+                            });
+                        } else {
+                            res.end(html);
+                        }
+                    });
                 }
             };
 
@@ -411,25 +440,42 @@ function Application(appFolder, appConfig) {
 //        self.app.get('/', ServeStatic(path.join(appFolder, 'http/')));
 
 //        self.on('init::http::done', function() {
-    
-            self.app.use(function (err, req, res, next) {
-                if (typeof err == 'number') {
-                    err = new HttpError(err);
-                }
 
-                if (err instanceof HttpError) {
-                    res.sendHttpError(err);
+
+        /**
+        *  Handles errors were sent via next() method
+        *
+        * following formats are supported:
+        *  next(new Error('Something blew up'));
+        *  next(400);
+        *  next({status: 400, errors: 'Activation code is wrong'});
+        *  next({status: 400, errors: ['Activation code is wrong']});
+        *
+        */
+        self.app.use(function (err, req, res, next) {
+            if (typeof err == 'number') {
+                err = {
+                    status: err,
+                    errors: http.STATUS_CODES[err] || "Error"
+                };
+            } else if (err instanceof Error) {
+                if (self.config.development) {
+                    err.status = 500;
+
+                    return ErrorHandler()(err, req, res, next);
                 } else {
-                    if (self.config.env == 'development') {
-                        ErrorHandler()(err, req, res, next);
-                    } else {
-                        log.error(err);
-                        err = new HttpError(500);
-                        res.sendHttpError(err);
-                    }
+                    console.error(err.stack);
+
+                    err = {
+                        status: 500,
+                        errors: 'Internal Server Error'
+                    };
                 }
-            });
-    
+            }
+
+            res.sendHttpError(err);
+        });
+
 //        })
 
 
@@ -441,7 +487,7 @@ function Application(appFolder, appConfig) {
 
             return;
         }
-        
+
         finish();
 
         function finish() {
@@ -571,7 +617,7 @@ console.log("init::BASH".cyan.bold);
     self.run = function(callback) {
 
         var steps = new zutils.Steps();
-        
+
         self.config.certificates && steps.push(self.initCertificates);
         self.config.statsd && steps.push(self.initMonitoringInterfaces);
         self.config.mongodb && self.databaseConfig && steps.push(self.initDatabaseConfig);
