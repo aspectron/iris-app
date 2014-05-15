@@ -368,7 +368,7 @@ function Application(appFolder, appConfig) {
             res.sendHttpError = function (response) {
                 res.status(response.status);
                 if (req.xhr) {
-                    res.json(response.errors);
+                    res.json({errors: _.isArray(response.errors) ? response.errors : [response.errors]});
                 } else {
                     res.render("error", {errors: response.errors}, function (err, html) {
                         res.setHeader('Content-Type', 'text/html; charset=utf-8');
