@@ -27,7 +27,8 @@
     "cookie-parser" : "*",
     "method-override" : "*",
     "serve-static" : "*",
-    "errorhandler" : "*"
+    "errorhandler" : "*",
+    "node-uuid" : "*"
   },
   "keywords": [
     "utilities",
