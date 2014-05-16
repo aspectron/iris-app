@@ -434,6 +434,13 @@ function Application(appFolder, appConfig) {
                     status: err,
                     errors: http.STATUS_CODES[err] || "Error"
                 };
+            } if (typeof err == 'string') {
+                console.error(err);
+
+                err = {
+                    status: 500,
+                    errors: 'Internal Server Error'
+                };
             } else if (err instanceof Error) {
                 if (self.config.development) {
                     err.status = 500;
