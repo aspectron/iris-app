@@ -1,7 +1,7 @@
 {
   "name": "zetta-app",
   "description": "Zetta Toolkit - Application Framework",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "author": {
     "name": "ASPECTRON Inc.",
     "email": "info@aspectron.com"
@@ -27,7 +27,8 @@
     "cookie-parser" : "*",
     "method-override" : "*",
     "serve-static" : "*",
-    "errorhandler" : "*"
+    "errorhandler" : "*",
+    "node-uuid" : "*"
   },
   "keywords": [
     "utilities",

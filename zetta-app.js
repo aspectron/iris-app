@@ -36,11 +36,11 @@ var connect = require('connect');
 var express = require('express');
 var socketio = require("socket.io");
 var path = require('path');
-// var colors = require('colors');
+var UUID = require('node-uuid');
 
 var zutils = require('zetta-utils');
 var zstats = require('zetta-stats');
-var zrpc = require('zetta-rpc');
+var zrpc = require('../zetta-rpc');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var mongo = require('mongodb');
@@ -190,6 +190,30 @@ function Application(appFolder, appConfig) {
 
     self.pingDataObject = { }
 
+
+    // ---
+
+
+    self.readJSON = function(filename) {
+        if(!fs.existsSync(filename))
+            return undefined;
+        var text = fs.readFileSync(filename, { encoding : 'utf-8' });
+        if(!text)
+            return undefined;
+        try { 
+            return JSON.parse(text); 
+        } catch(ex) { 
+            console.log(ex.trace); 
+            console.log('Offensing content follows:',text); 
+        }
+        return undefined;
+    }
+
+    self.writeJSON = function(filename, data) {
+        fs.writeFileSync(filename, JSON.stringify(data));
+    }
+
+    // ---
 
     self.initCertificates = function(callback) {
         if(self.verbose)
@@ -539,6 +563,8 @@ function Application(appFolder, appConfig) {
             auth: self.config.supervisor.auth,
             certificates: self.certificates,
             node: self.mac,
+            mac: self.mac,
+            uuid : self.uuid,
             designation: self.config.application,
             pingDataObject : self.pingDataObject
         });
@@ -614,6 +640,18 @@ console.log("init::BASH".cyan.bold);
         getmac.getMac(function (err, mac) {
             if (err) return callback(err);
             self.mac = mac.split(process.platform == 'win32' ? '-' : ':').join('').toLowerCase();
+
+            var uuid = __dirname.replace(/\\/g,'/').split('/').pop();
+            if(!uuid || uuid.length != 36) {
+                var local = self.readJSON('uuid');
+                if(local && local.uuid)
+                    uuid = local.uuid;
+                else {
+                    uuid = UUID.v1();
+                    self.writeJSON("uuid", { uuid : uuid });
+                }
+            }
+            self.uuid = uuid;
 
             self.emit('init::build', steps);
 
