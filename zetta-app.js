@@ -143,8 +143,18 @@ function Application(appFolder, appConfig) {
     //    zutils.render(self.config.caption);
     zutils.render(self.pkg.name.replace('-',' '));
 
-    if(self.config.translator)
-        self.translator = new Translator({ storagePath : path.join(appFolder,'config') });
+    if(self.config.translator) {
+        var options = {
+            storagePath: path.join(appFolder,'config'),
+            rootFolderPath: appFolder
+        };
+        options = _.extend(self.config.translator, options);
+
+        self.translator = new Translator(options, function() {
+            self.translator.separateEditor();
+        });
+    }
+
 
     http.globalAgent.maxSockets = self.config.maxHttpSockets || 1024; // 1024;
     https.globalAgent.maxSockets = self.config.maxHttpSockets || 1024;
@@ -404,6 +414,13 @@ function Application(appFolder, appConfig) {
                     status: err,
                     errors: http.STATUS_CODES[err] || "Error"
                 };
+            } if (typeof err == 'string') {
+                console.error(err);
+
+                err = {
+                    status: 500,
+                    errors: 'Internal Server Error'
+                };
             } else if (err instanceof Error) {
                 if (self.config.development) {
                     err.status = 500;
@@ -423,16 +440,6 @@ function Application(appFolder, appConfig) {
         });
 
 //        })
-
-
-        if(self.config.translator) {
-            self.translator.init(self.config.translator, function () {
-                self.translator.separateEditor();
-                finish();
-            });
-
-            return;
-        }
 
         finish();
 
