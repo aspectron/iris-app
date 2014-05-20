@@ -40,7 +40,7 @@ var UUID = require('node-uuid');
 
 var zutils = require('zetta-utils');
 var zstats = require('zetta-stats');
-var zrpc = require('../zetta-rpc');
+var zrpc = require('zetta-rpc');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var mongo = require('mongodb');
@@ -59,77 +59,17 @@ console.log = function() {
     return _cl.apply(console, args);
 }
 
-function Bash(options)
-{
-    var self = this;
-    self.options = options;
-    self.relaunch = true;
-
-    self.terminate = function() {
-        if(self.process) {
-            self.relaunch = false;
-            self.process.kill('SIGTERM');
-            delete self.process;
-        }
-        else
-            console.error("Unable to terminate process, no process present");
-    }
-
-    self.restart = function() {
-        if(self.process) {
-            self.process.kill('SIGTERM');
-        }
-    }
-
-    self.run = function() {
-
-        if(self.process) {
-            console.error(self.options);
-            throw new Error("Process is already running!");
-        }
-
-        self.relaunch = true;
-        self.process = child_process.spawn('bash',['--verbose']);
-
-        self.process.stdout.on('data',function (data) {
-            process.stdout.write(data);
-            options.stdout(data);
-
-        });
-
-        self.process.stderr.on('data',function (data) {
-            process.stderr.write(data);
-            options.stdout(data);
-        });
-
-        self.process.on('exit',function (code) {
-            if(code) {
-                console.log("BASH exited with code "+code);
-            }
-
-            delete self.process;
-
-            if(self.relaunch) {
-                console.log("Restarting BASH");
-                dpc(self.run, options.restart_delay || 0);
-            }
-        });
-    }
-}
-
-
-
 function getConfig(name) {
 
-    var host_filename = name+'.'+os.hostname()+'.conf';
     var filename = name+'.conf';
+    var host_filename = name+'.'+os.hostname()+'.conf';
+    var local_filename = name+'.local.conf';
 
     var data = [ ]; // undefined;
 
-    if(fs.existsSync(filename))
-        data.push(fs.readFileSync(filename) || null);
-    if(fs.existsSync(host_filename))
-        data.push(fs.readFileSync(host_filename) || null);
+    fs.existsSync(filename) && data.push(fs.readFileSync(filename) || null);
+    fs.existsSync(host_filename) && data.push(fs.readFileSync(host_filename) || null);
+    fs.existsSync(local_filename) && data.push(fs.readFileSync(local_filename) || null);
 
     if(!data[0] && !data[1])
         throw new Error("Unable to read config file:",(filename+'').magenta.bold)
@@ -152,14 +92,43 @@ function getConfig(name) {
     return o;
 }
 
+function readJSON(filename) {
+    if(!fs.existsSync(filename))
+        return undefined;
+    var text = fs.readFileSync(filename, { encoding : 'utf-8' });
+    if(!text)
+        return undefined;
+    try { 
+        return JSON.parse(text); 
+    } catch(ex) { 
+        console.log(ex.trace); 
+        console.log('Offensing content follows:',text); 
+    }
+    return undefined;
+}
+
+function writeJSON(filename, data) {
+    fs.writeFileSync(filename, JSON.stringify(data));
+}
 
 function Application(appFolder, appConfig) {
     var self = this;
     events.EventEmitter.call(this);
+    self.readJSON = readJSON;
+    self.writeJSON = writeJSON;
 
     self.appFolder = appFolder;
 
-    if(_.isString(appConfig))
+    self.pkg = self.readJSON(path.join(appFolder,'package.json'));
+    if(!self.pkg)
+        throw new Error("Application Unable to read package.json");
+
+    if(!self.pkg.name)
+        throw new Error("package.json must contain module 'name' field");
+
+    self.config = getConfig(path.join(appFolder,'config',  self.pkg.alias || self.pkg.name));
+
+    /*if(_.isString(appConfig))
         self.config = getConfig(path.join(appFolder,'config', appConfig));
     else
     if(_.isObject(appConfig))
@@ -169,9 +138,10 @@ function Application(appFolder, appConfig) {
 
     if(!self.config.application)
         throw new Error("Application() requires 'application' attribute in the config");
-
-    if(self.config.caption)
-        zutils.render(self.config.caption);
+*/
+    //if(self.config.caption)
+    //    zutils.render(self.config.caption);
+    zutils.render(self.pkg.name.replace('-',' '));
 
     if(self.config.translator)
         self.translator = new Translator({ storagePath : path.join(appFolder,'config') });
@@ -194,24 +164,6 @@ function Application(appFolder, appConfig) {
     // ---
 
 
-    self.readJSON = function(filename) {
-        if(!fs.existsSync(filename))
-            return undefined;
-        var text = fs.readFileSync(filename, { encoding : 'utf-8' });
-        if(!text)
-            return undefined;
-        try { 
-            return JSON.parse(text); 
-        } catch(ex) { 
-            console.log(ex.trace); 
-            console.log('Offensing content follows:',text); 
-        }
-        return undefined;
-    }
-
-    self.writeJSON = function(filename, data) {
-        fs.writeFileSync(filename, JSON.stringify(data));
-    }
 
     // ---
 
@@ -243,7 +195,8 @@ function Application(appFolder, appConfig) {
 
 
     self.initMonitoringInterfaces = function(callback) {
-        self.stats = new zstats.StatsD(self.config.statsd, self.mac, self.config.application);
+        self.stats = new zstats.StatsD(self.config.statsd, self.uuid, self.pkg.alias || self.pkg.name);
+//        self.stats = new zstats.StatsD(self.config.statsd, self.uuid, self.config.application);
         self.profiler = new zstats.Profiler(self.stats);
         self.monitor = new zstats.Monitor(self.stats);
 
@@ -393,31 +346,24 @@ function Application(appFolder, appConfig) {
                 res.status(response.status);
                 if (req.xhr) {
                     res.json({errors: _.isArray(response.errors) ? response.errors : [response.errors]});
-                } else {
-                    res.render("error", {errors: response.errors}, function (err, html) {
-                        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                } 
+                else 
+                {
+                    res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
-                        if (err) {
-                            fs.readFile(__dirname + '/public/error.html', 'utf8', function(e, content){
-                                var errors;
-                                if (_.isArray(response.errors)) {
-                                    errors = response.errors.map(function(error){ return '<li>' + _.escape(error) + '</li>'; }).join('');
+                    var errors;
+                    if (_.isArray(response.errors)) {
+                        errors = response.errors.map(function(error){ return '<li>' + _.escape(error) + '</li>'; }).join('');
 
-                                    errors = '<ul>' + errors + '</ul>';
-                                } else {
-                                    errors = '<p>' + _.escape(response.errors) + '</p>';
-                                }
+                        errors = '<ul>' + errors + '</ul>';
+                    } else {
+                        errors = '<p>' + _.escape(response.errors) + '</p>';
+                    }
 
-                                html = content
-                                    .replace('{errors}', errors)
-                                    .replace('{title}', self.app.locals.title ? self.app.locals.title : '');
-
-                                res.end(html);
-                            });
-                        } else {
-                            res.end(html);
-                        }
-                    });
+                    var html = "";
+                    html += errors+"<p/>";
+                    //html += self.app.locals.title ? self.app.locals.title : '';
+                    res.end(html);
                 }
             };
 
@@ -558,12 +504,12 @@ function Application(appFolder, appConfig) {
             node: self.mac,
             mac: self.mac,
             uuid : self.uuid,
-            designation: self.config.application,
+            designation: self.pkg.name, // self.config.application,
             pingDataObject : self.pingDataObject
         });
         self.rpc.registerListener(self);
         callback();
-
+/*
         self.on('git-pull', function () {
             console.log("Executing git pull");
             exec("git pull", function (err, stdout, stderr) {
@@ -580,26 +526,44 @@ function Application(appFolder, appConfig) {
                 })
             })
         })
-    }
 
-    self.initBash = function(callback) {
-console.log("init::BASH".cyan.bold);
-
-        self.bash = new Bash({
-            stdout : function(data) {
-                self.rpc.dispatch({
-                    op : 'console',
-                    data : data.toString('utf-8')
-                })
-            }
+        self.on('package::config::set', function(msg) {
+            var config = path.join(self.appFolder,'config',self.config.application+'.local.conf');
+            fs.writeFileSync(config, JSON.stringify(msg.config, null, '\t'));
+            dpc(function() {
+                // process.exit(0);
+            })
         })
 
-        // if(process.platform != 'win32')
-            dpc(function(){
-                self.bash.run();
-            })
+        self.on('package::config::get', function(msg) {
+            var config = path.join(self.appFolder,'config',self.config.application+'.local.conf');
+            var text = fs.readFileSync(config, { encoding : 'utf-8'});
+            try { 
+                var o = JSON.parse(text); 
+                o && self.rpc.dispatch({ op : 'package::config::set', config : o })
+            } catch(ex) { return console.log(ex.stack); }
 
-        callback && callback();
+        })
+
+        self.on('package::info::get', function(msg) {
+            self.rpc.dispatch({ op : 'package::info::set', pkg : self.pkg })
+        })
+
+        self.on('node::get-runtime-info', function() {
+            var o = {
+                // TODO - READ CONFIG FILES?
+                // TODO - READ CONFIG FILES?
+                // TODO - READ CONFIG FILES?
+                // TODO - READ CONFIG FILES?
+
+                // TODO - READ CONFIG FILES?
+                // TODO - READ CONFIG FILES?
+                // TODO - READ CONFIG FILES?
+                // TODO - READ CONFIG FILES?
+                // TODO - READ CONFIG FILES?
+            }
+        })
+*/        
     }
 
     // --
@@ -629,10 +593,11 @@ console.log("init::BASH".cyan.bold);
         }
         //self.config.mailer && steps.push(initMailer);
         self.config.supervisor && self.config.supervisor.address && steps.push(self.initSupervisors);
-        self.config.supervisor && self.config.supervisor.console && steps.push(self.initBash);
+
         getmac.getMac(function (err, mac) {
             if (err) return callback(err);
             self.mac = mac.split(process.platform == 'win32' ? '-' : ':').join('').toLowerCase();
+            self.macBytes = _.map(self.mac.match(/.{1,2}/g), function(v) { return parseInt(v, 16); })
 
             var uuid = __dirname.replace(/\\/g,'/').split('/').pop();
             if(!uuid || uuid.length != 36) {
@@ -640,13 +605,13 @@ console.log("init::BASH".cyan.bold);
                 if(local && local.uuid)
                     uuid = local.uuid;
                 else {
-                    uuid = UUID.v1();
+                    uuid = UUID.v1({ node : self.macBytes });
                     self.writeJSON("uuid", { uuid : uuid });
                 }
             }
             self.uuid = uuid;
 
-            self.emit('init::build', steps);
+             self.emit('init::build', steps);
 
             steps.run(function (err) {
 console.log("init::run".cyan.bold);
