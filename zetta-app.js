@@ -40,7 +40,7 @@ var UUID = require('node-uuid');
 
 var zutils = require('zetta-utils');
 var zstats = require('zetta-stats');
-var zrpc = require('../zetta-rpc');
+var zrpc = require('zetta-rpc');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var mongo = require('mongodb');
