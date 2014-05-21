@@ -1,7 +1,7 @@
 {
   "name": "zetta-app",
   "description": "Zetta Toolkit - Application Framework",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "author": {
     "name": "ASPECTRON Inc.",
     "email": "info@aspectron.com"
