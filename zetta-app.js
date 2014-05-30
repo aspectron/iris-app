@@ -72,10 +72,11 @@ function getConfig(name) {
     fs.existsSync(local_filename) && data.push(fs.readFileSync(local_filename) || null);
 
     if(!data[0] && !data[1])
-        throw new Error("Unable to read config file:",(filename+'').magenta.bold)
+        throw new Error("Unable to read config file:"+(filename+'').magenta.bold)
     function merge(dst, src) {
         _.each(src, function(v, k) {
-            if(_.isArray(v)) { if(!dst[k]) dst[k] = [ ]; merge(dst[k], v); }
+            if(_.isArray(v)) { dst[k] = [ ]; merge(dst[k], v); }
+            // if(_.isArray(v)) { if(!_.isArray(dst[k])) dst[k] = [ ]; merge(dst[k], v); }
             else if(_.isObject(v)) { if(!dst[k]) dst[k] = { };  merge(dst[k], v); }
             else { if(_.isArray(src)) dst.push(v); else dst[k] = v; }
         })
@@ -108,7 +109,7 @@ function readJSON(filename) {
 }
 
 function writeJSON(filename, data) {
-    fs.writeFileSync(filename, JSON.stringify(data));
+    fs.writeFileSync(filename, JSON.stringify(data, null, '\t'));
 }
 
 function Application(appFolder, appConfig) {
@@ -126,7 +127,7 @@ function Application(appFolder, appConfig) {
     if(!self.pkg.name)
         throw new Error("package.json must contain module 'name' field");
 
-    self.config = getConfig(path.join(appFolder,'config',  self.pkg.alias || self.pkg.name));
+    self.config = getConfig(path.join(appFolder,'config',  self.pkg.name));
 
     /*if(_.isString(appConfig))
         self.config = getConfig(path.join(appFolder,'config', appConfig));
@@ -205,10 +206,10 @@ function Application(appFolder, appConfig) {
 
 
     self.initMonitoringInterfaces = function(callback) {
-        self.stats = new zstats.StatsD(self.config.statsd, self.uuid, self.pkg.alias || self.pkg.name);
+        self.stats = new zstats.StatsD(self.config.statsd, self.uuid, self.pkg.name);
 //        self.stats = new zstats.StatsD(self.config.statsd, self.uuid, self.config.application);
         self.profiler = new zstats.Profiler(self.stats);
-        self.monitor = new zstats.Monitor(self.stats);
+        self.monitor = new zstats.Monitor(self.stats, self.config.monitor);
 
         callback();
     }
@@ -309,6 +310,7 @@ function Application(appFolder, appConfig) {
 */
 
     self.initExpress = function(callback) {
+        console.log("initExpress");
         var ExpressSession = require('express-session');
         var ErrorHandler = require('errorhandler');
 
@@ -470,6 +472,7 @@ function Application(appFolder, appConfig) {
     }
 
     self.initHttpServer = function(callback) {
+        console.log("initHttpServer");
 
         var CERTIFICATES = (self.config.http.ssl && self.config.certificates) ? self.certificates : null;
 
@@ -477,8 +480,13 @@ function Application(appFolder, appConfig) {
         self.io = socketio.listen(https_server, { 'log level': 0, 'secure': CERTIFICATES ? true : false });
         if(self.router && self.router.initWebSocket)
             self.router.initWebSocket(self.io);
+        //console.log("init::websockets".yellow.bold);
         self.emit('init::websockets');
+        //console.log("init::http::done".yellow.bold);
         self.emit('init::http::done');
+        //console.log("Starting listening...".yellow.bold);
+        //console.log("PORT IS:",self.config.http.port);
+        //console.log("CONFIG IS:", self.config);
         https_server.listen(self.config.http.port, function (err) {
             if (err) {
                 console.error("Unable to start HTTP(S) server on port" + self.config.http.port);
@@ -501,6 +509,7 @@ function Application(appFolder, appConfig) {
     };
 
     self.initSupervisors = function(callback) {
+        // console.log("initSupervisors");
         if(!self.certificates)
             throw new Error("Application supervisor requires configured certificates");
         console.log("Connecting to supervisor(s)...".bold, self.config.supervisor.address);
@@ -516,6 +525,12 @@ function Application(appFolder, appConfig) {
         });
         self.rpc.registerListener(self);
         callback();
+
+        self.on('package::info::get', function(msg) {
+            console.log(msg.op.yellow.bold);
+            self.rpc.dispatch({ op : 'package::info::data', uuid : self.uuid, pkg : self.pkg })
+        })
+
 /*
         self.on('git-pull', function () {
             console.log("Executing git pull");
@@ -585,6 +600,12 @@ function Application(appFolder, appConfig) {
 
     // --
 
+    var initSteps_ = [ ]
+
+    self.init = function(fn) {
+        initSteps_.push(fn);
+    }
+
     self.run = function(callback) {
 
         var steps = new zutils.Steps();
@@ -606,7 +627,7 @@ function Application(appFolder, appConfig) {
             self.mac = mac.split(process.platform == 'win32' ? '-' : ':').join('').toLowerCase();
             self.macBytes = _.map(self.mac.match(/.{1,2}/g), function(v) { return parseInt(v, 16); })
 
-            var uuid = __dirname.replace(/\\/g,'/').split('/').pop();
+            var uuid = self.appFolder.replace(/\\/g,'/').split('/').pop();
             if(!uuid || uuid.length != 36) {
                 var local = self.readJSON('uuid');
                 if(local && local.uuid)
@@ -618,7 +639,13 @@ function Application(appFolder, appConfig) {
             }
             self.uuid = uuid;
 
-             self.emit('init::build', steps);
+            console.log("Application UUID is:".cyan.bold,self.uuid);
+
+            _.each(initSteps_, function(fn) {
+                steps.push(fn);
+            })
+
+            self.emit('init::build', steps);
 
             steps.run(function (err) {
 console.log("init::run".cyan.bold);
