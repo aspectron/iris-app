@@ -102,8 +102,9 @@ function readJSON(filename) {
     try { 
         return JSON.parse(text); 
     } catch(ex) { 
-        console.log(ex.trace); 
-        console.log('Offensing content follows:',text); 
+        console.log("Error parsing file:",filename); 
+        console.log(ex); 
+        console.log('Offending content follows:',text); 
     }
     return undefined;
 }
@@ -142,19 +143,7 @@ function Application(appFolder, appConfig) {
 */
     //if(self.config.caption)
     //    zutils.render(self.config.caption);
-    zutils.render(self.pkg.name.replace('-',' '));
 
-    if(self.config.translator) {
-        var options = {
-            storagePath: path.join(appFolder,'config'),
-            rootFolderPath: appFolder
-        };
-        options = _.extend(self.config.translator, options);
-
-        self.translator = new Translator(options, function() {
-            self.translator.separateEditor();
-        });
-    }
 
 
     http.globalAgent.maxSockets = self.config.maxHttpSockets || 1024; // 1024;
@@ -174,7 +163,21 @@ function Application(appFolder, appConfig) {
 
     // ---
 
+    self.initTranslator = function(callback) {
+        if(self.config.translator) {
+            var options = {
+                storagePath: path.join(appFolder,'config'),
+                rootFolderPath: appFolder
+            };
+            options = _.extend(self.config.translator, options);
 
+            self.translator = new Translator(options, function() {
+                self.translator.separateEditor();
+            });
+        }
+
+        callback();
+    }
 
     // ---
 
@@ -309,8 +312,9 @@ function Application(appFolder, appConfig) {
     }
 */
 
-    self.initExpress = function(callback) {
-        console.log("initExpress");
+
+    self.initExpressConfig = function(callback) {
+        // console.log("initExpress");
         var ExpressSession = require('express-session');
         var ErrorHandler = require('errorhandler');
 
@@ -321,17 +325,20 @@ function Application(appFolder, appConfig) {
         self.app.engine('html', require('ejs').renderFile);
         self.app.use(require('body-parser')());//express.json());
         self.app.use(require('method-override')());
-        self.app.use(require('cookie-parser')());
+        self.app.use(require('cookie-parser')(self.config.session.secret));
 
         if(self.config.mongodb) {
             var MongoStore = require('connect-mongo')(ExpressSession);
-            self.app.sessionStore = new MongoStore({url: self.config.mongodb.main || self.config.mongodb});
-            self.app.use(ExpressSession({
-                secret: self.config.session.secret,
-                key: self.config.session.key,
-                cookie: self.config.session.cookie,
-                store: self.app.sessionStore
-            }));
+            self.app.sessionStore = new MongoStore({url: self.config.mongodb.main || self.config.mongodb}, function() {
+                self.app.use(ExpressSession({
+                    secret: self.config.session.secret,
+                    key: self.config.session.key,
+                    cookie: self.config.session.cookie,
+                    store: self.app.sessionStore
+                }));
+
+                return callback();
+            });
         }
         else
         if(self.config.http && self.config.http.session) {
@@ -341,7 +348,13 @@ function Application(appFolder, appConfig) {
                 secret: self.config.http.session.secret,
                 key: self.config.http.session.key,
             }));
+
+            return callback();
         }
+
+    }
+
+    self.initExpressHandlers = function(callback) {
 
         if(self.config.translator)
             self.app.use(self.translator.useSession);
@@ -610,13 +623,16 @@ function Application(appFolder, appConfig) {
 
         var steps = new zutils.Steps();
 
+
+        self.config.translator && steps.push(self.initTranslator);
         self.config.certificates && steps.push(self.initCertificates);
         self.config.statsd && steps.push(self.initMonitoringInterfaces);
         self.config.mongodb && self.databaseConfig && steps.push(self.initDatabaseConfig);
         self.config.mongodb && self.databaseCollections && steps.push(self.initDatabaseCollections);
         self.emit('init::database', steps);
         if(self.config.http) {
-            steps.push(self.initExpress);
+            steps.push(self.initExpressConfig);
+            steps.push(self.initExpressHandlers);
             steps.push(self.initHttpServer);
         }
         //self.config.mailer && steps.push(initMailer);
@@ -648,7 +664,6 @@ function Application(appFolder, appConfig) {
             self.emit('init::build', steps);
 
             steps.run(function (err) {
-console.log("init::run".cyan.bold);
                 if (err)
                     throw err;
 
@@ -663,9 +678,13 @@ console.log("init::run".cyan.bold);
         return self;
     }
 
-    dpc(function() {
-        self.run();
-    })
+    zutils.render(self.pkg.name.replace('-',' '), null, function(err, caption) {
+        console.log('\n'+caption);
+        dpc(function() {
+            self.run();
+        })
+    });
+
 }
 
 util.inherits(Application, events.EventEmitter);
