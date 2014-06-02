@@ -331,9 +331,9 @@ function Application(appFolder, appConfig) {
             var MongoStore = require('connect-mongo')(ExpressSession);
             self.app.sessionStore = new MongoStore({url: self.config.mongodb.main || self.config.mongodb}, function() {
                 self.app.use(ExpressSession({
-                    secret: self.config.session.secret,
-                    key: self.config.session.key,
-                    cookie: self.config.session.cookie,
+                    secret: self.config.http.session.secret,
+                    key: self.config.http.session.key,
+                    cookie: self.config.http.session.cookie,
                     store: self.app.sessionStore
                 }));
 
