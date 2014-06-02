@@ -325,7 +325,7 @@ function Application(appFolder, appConfig) {
         self.app.engine('html', require('ejs').renderFile);
         self.app.use(require('body-parser')());//express.json());
         self.app.use(require('method-override')());
-        self.app.use(require('cookie-parser')(self.config.session.secret));
+        self.app.use(require('cookie-parser')(self.config.http.session.secret));
 
         if(self.config.mongodb) {
             var MongoStore = require('connect-mongo')(ExpressSession);
