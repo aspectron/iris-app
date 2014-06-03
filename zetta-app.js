@@ -316,7 +316,6 @@ function Application(appFolder, appConfig) {
     self.initExpressConfig = function(callback) {
         // console.log("initExpress");
         var ExpressSession = require('express-session');
-        var ErrorHandler = require('errorhandler');
 
         self.app = express();
 
@@ -355,6 +354,8 @@ function Application(appFolder, appConfig) {
     }
 
     self.initExpressHandlers = function(callback) {
+
+        var ErrorHandler = require('errorhandler');
 
         if(self.config.translator)
             self.app.use(self.translator.useSession);
