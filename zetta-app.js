@@ -353,6 +353,80 @@ function Application(appFolder, appConfig) {
 
     }
 
+    self.initUserLogin = function (callback) {
+        if (self.config.login.enabled) {
+            if (typeof self.authenticate !== 'function') throw new Error('User Login:: Missing authenticate method');
+
+            self.app.get('/user/login', function (req, res, next) {
+                if (typeof self.getLoginView === 'function') {
+                    self.getLoginView(req, res, next);
+                } else {
+                    var data = {
+                        loggedIn: !!req.session.user,
+                        user: req.session.user
+                    }
+                    res.send(200, data);
+                }
+            });
+
+            self.app.get('/user/logout', function (req, res, next) {
+                if (req.session) {
+                    delete req.session.user;
+                }
+
+                if (typeof self.afterLogout === 'function') {
+                    self.afterLogout(req, res, next);
+                } else {
+                    res.send(200, {success: true});
+                }
+            });
+
+            self.app.post('/user/login', function (req, res, next) {
+                var data = req.body;
+
+                var nextStep = function (err, userData) {
+                    if (req.session) {
+                        req.session.user = userData;
+                    }
+
+                    var func = typeof self.afterLogin === 'function' ? self.afterLogin: afterLogin;
+
+                    if (err) {
+                        err = typeof err === 'string' ? [err]: err;
+                    }
+
+                    func(err, userData, req, res, next);
+                };
+
+                self.authenticate(data, nextStep, req, res, next);
+
+                function afterLogin (err, userData) {
+                    if (err) {
+                        res.send(400, {errors: err});
+                    } else {
+                        res.send(200, {success: true});
+                        // or
+                        // res.send(200, userData);
+                    }
+                }
+            });
+        }
+
+        callback();
+    };
+
+//    self.mongoDBLoginHandler = function (collectionName, callback) {
+//        self.db[collectionName].findOne({}, function (err, user) {
+//            if (err) return callback(err);
+//
+//            if (user) {
+//                user.id = user._id;
+//            }
+//
+//            callback(null, user);
+//        });
+//    }
+
     self.initExpressHandlers = function(callback) {
 
         var ErrorHandler = require('errorhandler');
@@ -633,6 +707,7 @@ function Application(appFolder, appConfig) {
         self.emit('init::database', steps);
         if(self.config.http) {
             steps.push(self.initExpressConfig);
+            steps.push(self.initUserLogin);
             steps.push(self.initExpressHandlers);
             steps.push(self.initHttpServer);
         }
