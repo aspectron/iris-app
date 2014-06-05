@@ -44,6 +44,7 @@ var zrpc = require('zetta-rpc');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var mongo = require('mongodb');
+var bcrypt = require('bcrypt-nodejs');
 // var Mailer = require('./lib/mailer');
 
 // temporary hack while working on translation module
@@ -415,17 +416,19 @@ function Application(appFolder, appConfig) {
         callback();
     };
 
-//    self.mongoDBLoginHandler = function (collectionName, callback) {
-//        self.db[collectionName].findOne({}, function (err, user) {
-//            if (err) return callback(err);
-//
-//            if (user) {
-//                user.id = user._id;
-//            }
-//
-//            callback(null, user);
-//        });
-//    }
+    self.mongoDBLoginHandler = function (collectionName, email, password, callback) {
+        self.db[collectionName].findOne({email: email}, function (err, user) {
+            if (err || !user) {
+                return callback('Wrong email or password');
+            }
+
+            bcrypt.compare(password, user.password, function (err, isMatch) {
+                if (!isMatch) return callback('Current password dose not match.');
+
+                callback(null, user);
+            });
+        });
+    }
 
     self.initExpressHandlers = function(callback) {
 
