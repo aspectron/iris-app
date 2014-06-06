@@ -527,7 +527,7 @@ function Application(appFolder, appConfig) {
         if(!self.certificates)
             throw new Error("Application supervisor requires configured certificates");
         console.log("Connecting to supervisor(s)...".bold, self.config.supervisor.address);
-        self.rpc = new zrpc.Client({
+        self.supervisor = new zrpc.Client({
             address: self.config.supervisor.address,
             auth: self.config.supervisor.auth,
             certificates: self.certificates,
@@ -537,12 +537,12 @@ function Application(appFolder, appConfig) {
             designation: self.pkg.name, // self.config.application,
             pingDataObject : self.pingDataObject
         });
-        self.rpc.registerListener(self);
+        self.supervisor.registerListener(self);
         callback();
 
         self.on('package::info::get', function(msg) {
             console.log(msg.op.yellow.bold);
-            self.rpc.dispatch({ op : 'package::info::data', uuid : self.uuid, pkg : self.pkg })
+            self.supervisor.dispatch({ op : 'package::info::data', uuid : self.uuid, pkg : self.pkg })
         })
 
 /*
