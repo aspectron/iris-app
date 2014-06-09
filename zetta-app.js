@@ -171,7 +171,7 @@ function Application(appFolder, appConfig) {
 
 
     self.restoreDefaultSettings = function(name, force) {
-        var filename = path.join(__dirname,'config', name+'.settings');
+        var filename = path.join(self.appFolder,'config', name+'.settings');
         if(!fs.existsSync(filename)) {
             self.settings = { }
             return;
@@ -184,7 +184,7 @@ function Application(appFolder, appConfig) {
     self.restoreSettings = function(name) {
         self.restoreDefaultSettings(name);
 
-        var host_filename = path.join(__dirname,'config', name+'.'+os.hostname().toLowerCase()+'.settings');
+        var host_filename = path.join(self.appFolder,'config', name+'.'+os.hostname().toLowerCase()+'.settings');
         if(!fs.existsSync(host_filename))
             return;
         var data = fs.readFileSync(host_filename);
@@ -196,7 +196,7 @@ function Application(appFolder, appConfig) {
     }
 
     self.storeSettings = function(name) {
-        var host_filename = path.join(__dirname,'config', name+'.'+os.hostname().toLowerCase()+'.settings');
+        var host_filename = path.join(self.appFolder,'config', name+'.'+os.hostname().toLowerCase()+'.settings');
         fs.writeFileSync(host_filename, JSON.stringify(self.settings, null, '\t'));
     }
 
