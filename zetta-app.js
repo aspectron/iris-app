@@ -128,7 +128,13 @@ function Application(appFolder, appConfig) {
     if(!self.pkg.name)
         throw new Error("package.json must contain module 'name' field");
 
-    self.config = getConfig(path.join(appFolder,'config',  self.pkg.name));
+    self.getConfig = function(name) {
+        return getConfig(path.join(appFolder,'config', name))
+    }
+
+    self.config = self.getConfig(self.pkg.name);
+
+    self.settings = { }
 
     /*if(_.isString(appConfig))
         self.config = getConfig(path.join(appFolder,'config', appConfig));
@@ -159,6 +165,40 @@ function Application(appFolder, appConfig) {
     }
 
     self.pingDataObject = { }
+
+    // ---
+
+
+
+    self.restoreDefaultSettings = function(name, force) {
+        var filename = path.join(__dirname,'config', name+'.settings');
+        if(!fs.existsSync(filename)) {
+            self.settings = { }
+            return;
+        }
+        var data = fs.readFileSync(filename);
+        self.settings = eval('('+data.toString('utf-8')+')');
+    }
+
+
+    self.restoreSettings = function(name) {
+        self.restoreDefaultSettings(name);
+
+        var host_filename = path.join(__dirname,'config', name+'.'+os.hostname().toLowerCase()+'.settings');
+        if(!fs.existsSync(host_filename))
+            return;
+        var data = fs.readFileSync(host_filename);
+        var settings = eval('('+data.toString('utf-8')+')');
+        _.each(settings, function(o, key) {
+            if(self.settings[key])
+                self.settings[key].value = o.value;
+        })
+    }
+
+    self.storeSettings = function(name) {
+        var host_filename = path.join(__dirname,'config', name+'.'+os.hostname().toLowerCase()+'.settings');
+        fs.writeFileSync(host_filename, JSON.stringify(self.settings, null, '\t'));
+    }
 
 
     // ---
@@ -271,7 +311,7 @@ function Application(appFolder, appConfig) {
 
                 self.databases[name] = database;
 
-                console.log("DB '" + (name) + "' connected", self.config.mongodb[name]);
+                console.log("DB '" + (name) + "' connected", self.config.mongodb[name].bold);
                 zutils.bind_database_config(database, config.collections, function (err, db) {
                     if (err)
                         return callback(err);
@@ -486,7 +526,6 @@ function Application(appFolder, appConfig) {
     }
 
     self.initHttpServer = function(callback) {
-        console.log("initHttpServer");
 
         var CERTIFICATES = (self.config.http.ssl && self.config.certificates) ? self.certificates : null;
 
@@ -507,7 +546,7 @@ function Application(appFolder, appConfig) {
                 return callback(err);
             }
 
-            console.log('HTTP server listening on port ' + self.config.http.port);
+            console.log('HTTP server listening on port ' + (self.config.http.port+'').bold);
 
             if (!CERTIFICATES)
                 console.log(("WARNING - SSL is currently disabled").magenta.bold);
@@ -614,7 +653,12 @@ function Application(appFolder, appConfig) {
 
     // --
 
+    var initStepsBeforeHttp_ = [ ]
     var initSteps_ = [ ]
+
+    self.initBeforeHttp = function(fn) {
+        initStepsBeforeHttp_.push(fn);
+    }
 
     self.init = function(fn) {
         initSteps_.push(fn);
@@ -631,6 +675,9 @@ function Application(appFolder, appConfig) {
         self.config.mongodb && self.databaseConfig && steps.push(self.initDatabaseConfig);
         self.config.mongodb && self.databaseCollections && steps.push(self.initDatabaseCollections);
         self.emit('init::database', steps);
+        _.each(initStepsBeforeHttp_, function(fn) {
+            steps.push(fn);
+        })
         if(self.config.http) {
             steps.push(self.initExpressConfig);
             steps.push(self.initExpressHandlers);
