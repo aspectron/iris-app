@@ -534,6 +534,7 @@ function Application(appFolder, appConfig) {
         if(self.router && self.router.initWebSocket)
             self.router.initWebSocket(self.io);
         //console.log("init::websockets".yellow.bold);
+        self.config.websocket && self.initWebsocket(function(){});
         self.emit('init::websockets');
         //console.log("init::http::done".yellow.bold);
         self.emit('init::http::done');
@@ -641,6 +642,59 @@ function Application(appFolder, appConfig) {
 */        
     }
 
+    self.initWebsocket = function(callback) {
+        self.webSocketMap = [ ]
+        self.webSockets = self.io.of(self.config.websocket.path).on('connection', function(socket) {
+            console.log("websocket "+socket.id+" connected");
+            self.emit('websocket::connect', socket);
+            self.webSocketMap[socket.id] = socket;
+            socket.on('disconnect', function() {
+                self.emit('websocket::disconnect', socket);
+                delete self.webSocketMap[socket.id];
+                console.log("websocket "+socket.id+" disconnected");
+            })
+            socket.on('rpc::request', function(msg) {
+                try {
+                    var listeners = self.listeners(msg.req.op);
+                    if(listeners.length == 1) {
+                        listeners[0].call(socket, msg.req, function(err, resp) {
+                            socket.emit('rpc::response', {
+                                _resp : msg._req,
+                                err : err,
+                                resp : resp,
+                            });
+                        })
+                    }
+                    else
+                    if(listeners.length)
+                    {
+                        socket.emit('rpc::response', {
+                            _resp : msg._req,
+                            err : { error : "Too many handlers for '"+msg.req.op+"'" }
+                        });
+                    }
+                    else
+                    {
+                        socket.emit('rpc::response', {
+                            _resp : msg._req,
+                            err : { error : "No such handler '"+msg.req.op+"'" }
+                        });
+                    }
+                }
+                catch(ex) { console.error(ex.stack); }
+            });
+
+            socket.on('message', function(msg) {
+                try {
+                    self.emit(msg.op, msg, socket);
+                }
+                catch(ex) { console.error(ex.stack); }
+            });
+        });
+
+        callback();
+    }
+
     // --
 
     function updateServerStats() {
@@ -703,7 +757,7 @@ function Application(appFolder, appConfig) {
             }
             self.uuid = uuid;
 
-            console.log("Application UUID is:".cyan.bold,self.uuid);
+            console.log("App UUID:".bold,self.uuid.bold);
 
             _.each(initSteps_, function(fn) {
                 steps.push(fn);
@@ -726,12 +780,20 @@ function Application(appFolder, appConfig) {
         return self;
     }
 
-    zutils.render(self.pkg.name.replace('-',' '), null, function(err, caption) {
-        console.log('\n'+caption);
-        dpc(function() {
+    self.caption = self.pkg.name;
+    dpc(function() {
+        if(self.caption) {
+            zutils.render(self.caption.replace('-',' '), null, function(err, caption) {
+                console.log('\n'+caption);
+                dpc(function() {
+                    self.run();
+                })
+            })
+        }
+        else {
             self.run();
-        })
-    });
+        }
+    })
 
 }
 
