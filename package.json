@@ -28,7 +28,8 @@
     "method-override" : "*",
     "serve-static" : "*",
     "errorhandler" : "*",
-    "node-uuid" : "*"
+    "node-uuid" : "*",
+    "bcrypt-nodejs" : "*"
   },
   "keywords": [
     "utilities",
