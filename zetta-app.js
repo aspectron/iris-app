@@ -44,6 +44,7 @@ var zrpc = require('zetta-rpc');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var mongo = require('mongodb');
+var bcrypt = require('bcrypt-nodejs');
 // var Mailer = require('./lib/mailer');
 
 // temporary hack while working on translation module
@@ -393,6 +394,82 @@ function Application(appFolder, appConfig) {
 
     }
 
+    self.initUserLogin = function (callback) {
+        if (self.config.login.enabled) {
+            if (typeof self.authenticate !== 'function') throw new Error('User Login:: Missing authenticate method');
+
+            self.app.get('/user/login', function (req, res, next) {
+                if (typeof self.getLoginView === 'function') {
+                    self.getLoginView(req, res, next);
+                } else {
+                    var data = {
+                        loggedIn: !!req.session.user,
+                        user: req.session.user
+                    }
+                    res.send(200, data);
+                }
+            });
+
+            self.app.get('/user/logout', function (req, res, next) {
+                if (req.session) {
+                    delete req.session.user;
+                }
+
+                if (typeof self.afterLogout === 'function') {
+                    self.afterLogout(req, res, next);
+                } else {
+                    res.send(200, {success: true});
+                }
+            });
+
+            self.app.post('/user/login', function (req, res, next) {
+                var data = req.body;
+
+                var nextStep = function (err, userData) {
+                    if (req.session) {
+                        req.session.user = userData;
+                    }
+
+                    var func = typeof self.afterLogin === 'function' ? self.afterLogin: afterLogin;
+
+                    if (err) {
+                        err = typeof err === 'string' ? [err]: err;
+                    }
+
+                    func(err, userData, req, res, next);
+                };
+
+                self.authenticate(data, nextStep, req, res, next);
+
+                function afterLogin (err, userData) {
+                    if (err) {
+                        res.send(400, {errors: err});
+                    } else {
+                        res.send(200, {success: true});
+                        // or
+                        // res.send(200, userData);
+                    }
+                }
+            });
+        }
+
+        callback();
+    };
+
+    self.mongoDBLoginHandler = function (collectionName, email, password, callback) {
+        self.db[collectionName].findOne({email: email}, function (err, user) {
+            if (err || !user) {
+                return callback('Wrong email or password');
+            }
+
+            bcrypt.compare(password, user.password, function (err, isMatch) {
+                if (!isMatch) return callback('Current password dose not match.');
+
+                callback(null, user);
+            });
+        });
+    }
+
     self.initExpressHandlers = function(callback) {
 
         var ErrorHandler = require('errorhandler');
@@ -734,6 +811,7 @@ function Application(appFolder, appConfig) {
         })
         if(self.config.http) {
             steps.push(self.initExpressConfig);
+            steps.push(self.initUserLogin);
             steps.push(self.initExpressHandlers);
             steps.push(self.initHttpServer);
         }
