@@ -41,6 +41,7 @@ var UUID = require('node-uuid');
 var zutils = require('zetta-utils');
 var zstats = require('zetta-stats');
 var zrpc = require('zetta-rpc');
+var zlogin = require('zetta-login');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var mongo = require('mongodb');
@@ -273,12 +274,6 @@ function Application(appFolder, appConfig) {
     self.initDatabaseConfig = function(callback) {
 
         var dbconf = self.databaseConfig;
-
-        //if (typeof(dbconf) == 'string')
-        //    dbconf = [ dbconf ];
-
-
-
         console.log("Connecting to database...".bold);
 
         self.db = { }
@@ -391,88 +386,30 @@ function Application(appFolder, appConfig) {
 
             return callback();
         }
-
     }
 
-    self.initUserLogin = function (callback) {
-        if (self.config.login.enabled) {
-            if (typeof self.authenticate !== 'function') throw new Error('User Login:: Missing authenticate method');
-
-            self.app.get('/user/login', function (req, res, next) {
-                if (typeof self.getLoginView === 'function') {
-                    self.getLoginView(req, res, next);
-                } else {
-                    var data = {
-                        loggedIn: !!req.session.user,
-                        user: req.session.user
-                    }
-                    res.send(200, data);
-                }
-            });
-
-            self.app.get('/user/logout', function (req, res, next) {
-                if (req.session) {
-                    delete req.session.user;
-                }
-
-                if (typeof self.afterLogout === 'function') {
-                    self.afterLogout(req, res, next);
-                } else {
-                    res.send(200, {success: true});
-                }
-            });
-
-            self.app.post('/user/login', function (req, res, next) {
-                var data = req.body;
-
-                var nextStep = function (err, userData) {
-                    if (req.session) {
-                        req.session.user = userData;
-                    }
-
-                    var func = typeof self.afterLogin === 'function' ? self.afterLogin: afterLogin;
-
-                    if (err) {
-                        err = typeof err === 'string' ? [err]: err;
-                    }
-
-                    func(err, userData, req, res, next);
-                };
-
-                self.authenticate(data, nextStep, req, res, next);
-
-                function afterLogin (err, userData) {
-                    if (err) {
-                        res.send(400, {errors: err});
-                    } else {
-                        res.send(200, {success: true});
-                        // or
-                        // res.send(200, userData);
-                    }
-                }
-            });
-        }
-
-        callback();
-    };
-
-    self.mongoDBLoginHandler = function (collectionName, email, password, callback) {
-        self.db[collectionName].findOne({email: email}, function (err, user) {
-            if (err || !user) {
-                return callback('Wrong email or password');
-            }
-
-            bcrypt.compare(password, user.password, function (err, isMatch) {
-                if (!isMatch) return callback('Current password dose not match.');
-
-                callback(null, user);
-            });
-        });
-    }
 
     self.initExpressHandlers = function(callback) {
+        var ErrorHandler = require('errorhandler')();
 
-        var ErrorHandler = require('errorhandler');
+        var isErrorView = fs.existsSync(path.join(self.appFolder,'views','error.ejs'));
+        self.handleHttpError = function(response, req, res, next) {
+            if(req.xhr) {
+                res.json({errors: _.isArray(response.errors) ? response.errors : [response.errors]});
+                return;
+            }
+            else
+            if(isErrorView) {
+                res.render('error', { error : error });
+                return;
+            }
+            else {
+                res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                res.end("Server Error");
+                return;
+            }
+        }
+
 
         if(self.config.translator)
             self.app.use(self.translator.useSession);
@@ -484,34 +421,32 @@ function Application(appFolder, appConfig) {
          *  errors: {String | Array}
          * }
          */
+
+        function HttpError(response) {
+            res.status(response.status);
+            self.handleHttpError(respo)
+        }
+
         self.app.use(function(req, res, next) {
             res.sendHttpError = function (response) {
-                res.status(response.status);
-                if (req.xhr) {
-                    res.json({errors: _.isArray(response.errors) ? response.errors : [response.errors]});
-                } 
-                else 
-                {
-                    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-
-                    var errors;
-                    if (_.isArray(response.errors)) {
-                        errors = response.errors.map(function(error){ return '<li>' + _.escape(error) + '</li>'; }).join('');
-
-                        errors = '<ul>' + errors + '</ul>';
-                    } else {
-                        errors = '<p>' + _.escape(response.errors) + '</p>';
-                    }
-
-                    var html = "";
-                    html += errors+"<p/>";
-                    //html += self.app.locals.title ? self.app.locals.title : '';
-                    res.end(html);
-                }
-            };
+                self.handleHttpError(response, req, res, next);
+            }
 
             next();
         })
+
+        var loginConfig = self.config.http.login;
+        if(loginConfig && loginConfig.authenticator) {
+            switch(loginConfig.authenticator.type) {
+                case 'basic' : {
+                    console.log("AUTHENTICATOR CONFIG:", loginConfig.authenticator);
+                    console.log("LOGIN CONFIG:", loginConfig);
+                    self.authenticator = new zlogin.BasicAuthenticator(self, loginConfig.authenticator);
+                    self.login = new zlogin.Login(self, self.authenticator, loginConfig);
+                    self.login.init(self.app);
+                } break;
+            }
+        }
 
         if(self.router)
             self.router.init(self.app);
@@ -525,11 +460,6 @@ function Application(appFolder, appConfig) {
                 self.app.use(src, ServeStatic(path.join(appFolder, dst)));
             })
         }
-
-//        self.app.get('/', ServeStatic(path.join(appFolder, 'http/')));
-
-//        self.on('init::http::done', function() {
-
 
         /**
         *  Handles errors were sent via next() method
@@ -547,21 +477,24 @@ function Application(appFolder, appConfig) {
                     status: err,
                     errors: http.STATUS_CODES[err] || "Error"
                 };
-            } if (typeof err == 'string') {
+            } 
+            else
+            if (typeof err == 'string') {
                 console.error(err);
-
                 err = {
                     status: 500,
                     errors: 'Internal Server Error'
                 };
-            } else if (err instanceof Error) {
+            } 
+            else 
+            if (err instanceof Error) {
                 if (self.config.development) {
                     err.status = 500;
-
-                    return ErrorHandler()(err, req, res, next);
-                } else {
+                    return ErrorHandler(err, req, res, next);
+                } 
+                else 
+                {
                     console.error(err.stack);
-
                     err = {
                         status: 500,
                         errors: 'Internal Server Error'
@@ -571,8 +504,6 @@ function Application(appFolder, appConfig) {
 
             res.sendHttpError(err);
         });
-
-//        })
 
         finish();
 
@@ -811,7 +742,6 @@ function Application(appFolder, appConfig) {
         })
         if(self.config.http) {
             steps.push(self.initExpressConfig);
-            steps.push(self.initUserLogin);
             steps.push(self.initExpressHandlers);
             steps.push(self.initHttpServer);
         }

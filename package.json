@@ -1,7 +1,7 @@
 {
   "name": "zetta-app",
   "description": "Zetta Toolkit - Application Framework",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "author": {
     "name": "ASPECTRON Inc.",
     "email": "info@aspectron.com"
@@ -11,6 +11,7 @@
     "zetta-stats" : "*",
     "zetta-rpc" : "*",
     "zetta-translator" : "*",
+    "zetta-login" : "*",
     "getmac" : "*",
     "underscore" : "*",
     "mongodb" : "*",
