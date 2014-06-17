@@ -46,12 +46,8 @@ var exec = require('child_process').exec;
 var getmac = require('getmac');
 var mongo = require('mongodb');
 var bcrypt = require('bcrypt-nodejs');
-// var Mailer = require('./lib/mailer');
-
-// temporary hack while working on translation module
 var os = require('os');
 var child_process = require('child_process');
-//var translator = require('zetta-translator');
 var Translator = require('zetta-translator');
 
 var _cl = console.log;
@@ -138,22 +134,6 @@ function Application(appFolder, appConfig) {
 
     self.settings = { }
 
-    /*if(_.isString(appConfig))
-        self.config = getConfig(path.join(appFolder,'config', appConfig));
-    else
-    if(_.isObject(appConfig))
-        self.config = appConfig;
-    else
-        throw new Error("Application() requires config object as argument");
-
-    if(!self.config.application)
-        throw new Error("Application() requires 'application' attribute in the config");
-*/
-    //if(self.config.caption)
-    //    zutils.render(self.config.caption);
-
-
-
     http.globalAgent.maxSockets = self.config.maxHttpSockets || 1024; // 1024;
     https.globalAgent.maxSockets = self.config.maxHttpSockets || 1024;
     if(process.platform != 'win32' && self.config.maxSockets) {
@@ -169,8 +149,6 @@ function Application(appFolder, appConfig) {
     self.pingDataObject = { }
 
     // ---
-
-
 
     self.restoreDefaultSettings = function(name, force) {
         var filename = path.join(self.appFolder,'config', name+'.settings');
@@ -220,8 +198,6 @@ function Application(appFolder, appConfig) {
 
         callback();
     }
-
-    // ---
 
     self.initCertificates = function(callback) {
         if(self.verbose)
@@ -286,16 +262,7 @@ function Application(appFolder, appConfig) {
             if (!config)
                 return callback();
 
-
-
-            var name = config.config;// || config.alias;
-
-            /*if (typeof(self.config.db) != 'object' || !self.config.db[name]) {
-                console.error(("Unable to find DB configuration for " + name).red.bold);
-                return callback(new Error("Unable to find DB configuration (Update local config file!)"));
-            }*/
-
-
+            var name = config.config;
             var db = self.config.mongodb[name];
 
             if(!db)
@@ -341,16 +308,7 @@ function Application(appFolder, appConfig) {
     }
 
 
-/*    self.initMailer = function(callback) {
-        self.mailer = Mailer(self);
-
-        callback();
-    }
-*/
-
-
     self.initExpressConfig = function(callback) {
-        // console.log("initExpress");
         var ExpressSession = require('express-session');
 
         self.app = express();
@@ -514,25 +472,6 @@ function Application(appFolder, appConfig) {
 
     };
 
-    self.initRedirect = function(callback) {
-
-/*        var http_app = express();
-        http_app.get('*', function (req, res) {
-            res.redirect("https://" + req.headers.host + req.url);
-        })
-        var http_server = http.createServer(http_app);
-
-        http_server.listen(self.config.http.port, function (err) {
-            if (err) {
-                console.error("Unable to start HTTP server on port" + self.config.http.port);
-                return callback(err);
-            }
-            console.log("HTTP Server listening on port " + self.config.http.port);
-            callback && callback();
-        })
-*/
-    }
-
     self.initHttpServer = function(callback) {
 
         var CERTIFICATES = (self.config.http.ssl && self.config.certificates) ? self.certificates : null;
@@ -541,14 +480,9 @@ function Application(appFolder, appConfig) {
         self.io = socketio.listen(https_server, { 'log level': 0, 'secure': CERTIFICATES ? true : false });
         if(self.router && self.router.initWebSocket)
             self.router.initWebSocket(self.io);
-        //console.log("init::websockets".yellow.bold);
         self.config.websocket && self.initWebsocket(function(){});
         self.emit('init::websockets');
-        //console.log("init::http::done".yellow.bold);
         self.emit('init::http::done');
-        //console.log("Starting listening...".yellow.bold);
-        //console.log("PORT IS:",self.config.http.port);
-        //console.log("CONFIG IS:", self.config);
         https_server.listen(self.config.http.port, function (err) {
             if (err) {
                 console.error("Unable to start HTTP(S) server on port" + self.config.http.port);
@@ -592,62 +526,6 @@ function Application(appFolder, appConfig) {
             console.log(msg.op.yellow.bold);
             self.supervisor.dispatch({ op : 'package::info::data', uuid : self.uuid, pkg : self.pkg })
         })
-
-/*
-        self.on('git-pull', function () {
-            console.log("Executing git pull");
-            exec("git pull", function (err, stdout, stderr) {
-                console.log(stdout);
-            })
-        })
-
-        self.on('git-pull-restart', function () {
-            console.log("Executing git pull & restarting on user request");
-            exec("git pull", function (err, stdout, stderr) {
-                console.log(stdout);
-                dpc(5000, function () {
-                    process.exit(0);
-                })
-            })
-        })
-
-        self.on('package::config::set', function(msg) {
-            var config = path.join(self.appFolder,'config',self.config.application+'.local.conf');
-            fs.writeFileSync(config, JSON.stringify(msg.config, null, '\t'));
-            dpc(function() {
-                // process.exit(0);
-            })
-        })
-
-        self.on('package::config::get', function(msg) {
-            var config = path.join(self.appFolder,'config',self.config.application+'.local.conf');
-            var text = fs.readFileSync(config, { encoding : 'utf-8'});
-            try { 
-                var o = JSON.parse(text); 
-                o && self.rpc.dispatch({ op : 'package::config::set', config : o })
-            } catch(ex) { return console.log(ex.stack); }
-
-        })
-
-        self.on('package::info::get', function(msg) {
-            self.rpc.dispatch({ op : 'package::info::set', pkg : self.pkg })
-        })
-
-        self.on('node::get-runtime-info', function() {
-            var o = {
-                // TODO - READ CONFIG FILES?
-                // TODO - READ CONFIG FILES?
-                // TODO - READ CONFIG FILES?
-                // TODO - READ CONFIG FILES?
-
-                // TODO - READ CONFIG FILES?
-                // TODO - READ CONFIG FILES?
-                // TODO - READ CONFIG FILES?
-                // TODO - READ CONFIG FILES?
-                // TODO - READ CONFIG FILES?
-            }
-        })
-*/        
     }
 
     self.initWebsocket = function(callback) {
