@@ -397,8 +397,7 @@ function Application(appFolder, appConfig) {
         if(loginConfig && loginConfig.authenticator) {
             switch(loginConfig.authenticator.type) {
                 case 'basic' : {
-                    console.log("AUTHENTICATOR CONFIG:", loginConfig.authenticator);
-                    console.log("LOGIN CONFIG:", loginConfig);
+                    console.log("Enabling basic authenticator".bold);
                     self.authenticator = new zlogin.BasicAuthenticator(self, loginConfig.authenticator);
                     self.login = new zlogin.Login(self, self.authenticator, loginConfig);
                     self.login.init(self.app);
