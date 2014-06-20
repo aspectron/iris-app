@@ -45,7 +45,6 @@ var zlogin = require('zetta-login');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var mongo = require('mongodb');
-var bcrypt = require('bcrypt-nodejs');
 var os = require('os');
 var child_process = require('child_process');
 var Translator = require('zetta-translator');
@@ -687,5 +686,6 @@ util.inherits(Application, events.EventEmitter);
 Application.getConfig = getConfig;
 
 module.exports = {
-    Application : Application
+    Application : Application,
+    getConfig : getConfig
 }
