@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 //
 // -- Zetta Toolkit - Application Framework
 //
