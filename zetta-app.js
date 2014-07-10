@@ -44,6 +44,7 @@ var zrpc = require('zetta-rpc');
 var zlogin = require('zetta-login');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
+var nodemailer = require('nodemailer');
 var mongo = require('mongodb');
 var os = require('os');
 var child_process = require('child_process');
@@ -113,21 +114,19 @@ function writeJSON(filename, data) {
 function Application(appFolder, appConfig) {
     var self = this;
     events.EventEmitter.call(this);
-    self.readJSON = readJSON;
-    self.writeJSON = writeJSON;
 
     self.appFolder = appFolder;
 
-    self.pkg = self.readJSON(path.join(appFolder,'package.json'));
+    self.pkg = readJSON(path.join(appFolder,'package.json'));
     if(!self.pkg)
         throw new Error("Application Unable to read package.json");
 
     if(!self.pkg.name)
         throw new Error("package.json must contain module 'name' field");
 
-    self.getConfig = function(name) {
-        return getConfig(path.join(appFolder,'config', name))
-    }
+    self.getConfig = function(name) { return getConfig(path.join(appFolder,'config', name)) }
+    self.readJSON = readJSON;
+    self.writeJSON = writeJSON;
 
     self.config = self.getConfig(self.pkg.name);
 
@@ -243,9 +242,25 @@ function Application(appFolder, appConfig) {
             ]
         }
     ];
-
-
 */
+
+    self.initMailer = function(callback) {
+
+        var pickupFolder = path.join(self.appFolder,"mailer");
+
+        if(self.config.mailer.pickup) {
+            self.mailer = nodemailer.createTransport("PICKUP", {
+                directory: pickupFolder
+            })
+        }
+        else
+        {
+            self.mailer = nodemailer.createTransport("SMTP", self.config.mailer);
+        }
+
+        callback();
+    }
+
     self.initDatabaseConfig = function(callback) {
 
         var dbconf = self.databaseConfig;
@@ -357,7 +372,7 @@ function Application(appFolder, appConfig) {
             }
             else
             if(isErrorView) {
-                res.render('error', { error : error });
+                res.render('error', { error : response.error });
                 return;
             }
             else {
@@ -417,6 +432,8 @@ function Application(appFolder, appConfig) {
             })
         }
 
+        self.emit('init::express::error-handlers', self.app);
+
         /**
         *  Handles errors were sent via next() method
         *
@@ -460,6 +477,8 @@ function Application(appFolder, appConfig) {
 
             res.sendHttpError(err);
         });
+
+        self.emit('init::express::done', self.app);
 
         finish();
 
@@ -621,7 +640,7 @@ function Application(appFolder, appConfig) {
             steps.push(self.initExpressHandlers);
             steps.push(self.initHttpServer);
         }
-        //self.config.mailer && steps.push(initMailer);
+        self.config.mailer && steps.push(initMailer);
         self.config.supervisor && self.config.supervisor.address && steps.push(self.initSupervisors);
 
         getmac.getMac(function (err, mac) {
@@ -631,12 +650,12 @@ function Application(appFolder, appConfig) {
 
             var uuid = self.appFolder.replace(/\\/g,'/').split('/').pop();
             if(!uuid || uuid.length != 36) {
-                var local = self.readJSON('uuid');
+                var local = readJSON('uuid');
                 if(local && local.uuid)
                     uuid = local.uuid;
                 else {
                     uuid = UUID.v1({ node : self.macBytes });
-                    self.writeJSON("uuid", { uuid : uuid });
+                    Application.writeJSON("uuid", { uuid : uuid });
                 }
             }
             self.uuid = uuid;
@@ -684,6 +703,8 @@ function Application(appFolder, appConfig) {
 util.inherits(Application, events.EventEmitter);
 
 Application.getConfig = getConfig;
+Application.readJSON = readJSON;
+Application.writeJSON = writeJSON;
 
 module.exports = {
     Application : Application,
