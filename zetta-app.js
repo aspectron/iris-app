@@ -36,6 +36,7 @@ var express = require('express');
 var socketio = require("socket.io");
 var path = require('path');
 var UUID = require('node-uuid');
+var crypto = require('crypto');
 
 var zutils = require('zetta-utils');
 var zstats = require('zetta-stats');
@@ -305,24 +306,33 @@ function Application(appFolder, appConfig) {
         })
     }
 
+    self.getHttpSessionSecret = function() {
+        if(self._httpSessionSecret)
+            return self._httpSessionSecret;
+
+        self._httpSessionSecret = crypto.createHash('sha256').update(self.uuid+self.config.http.session.secret).digest('hex');
+        return self._httpSessionSecret;
+    }
 
     self.initExpressConfig = function(callback) {
         var ExpressSession = require('express-session');
 
         self.app = express();
 
+        self.app.sessionSecret = self.getHttpSessionSecret();
+
         self.app.set('views', path.join(appFolder,'views'));
         self.app.set('view engine', 'ejs');
         self.app.engine('html', require('ejs').renderFile);
         self.app.use(require('body-parser')());//express.json());
         self.app.use(require('method-override')());
-        self.app.use(require('cookie-parser')(self.config.http.session.secret));
+        self.app.use(require('cookie-parser')(self.app.sessionSecret));
 
         if(self.config.mongodb) {
             var MongoStore = require('connect-mongo')(ExpressSession);
             self.app.sessionStore = new MongoStore({url: self.config.mongodb.main || self.config.mongodb}, function() {
                 self.app.use(ExpressSession({
-                    secret: self.config.http.session.secret,
+                    secret: self.app.sessionSecret,
                     key: self.config.http.session.key,
                     cookie: self.config.http.session.cookie,
                     store: self.app.sessionStore
@@ -333,10 +343,9 @@ function Application(appFolder, appConfig) {
         }
         else
         if(self.config.http && self.config.http.session) {
-            self.app.sessionSecret = self.config.http.session.secret;
             var CookieSession = require('cookie-session');
             self.app.use(CookieSession({
-                secret: self.config.http.session.secret,
+                secret: self.app.sessionSecret,
                 key: self.config.http.session.key,
             }));
 
