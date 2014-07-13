@@ -652,7 +652,7 @@ function Application(appFolder, appConfig) {
             steps.push(self.initExpressHandlers);
             steps.push(self.initHttpServer);
         }
-        self.config.mailer && steps.push(initMailer);
+        self.config.mailer && steps.push(self.initMailer);
         self.config.supervisor && self.config.supervisor.address && steps.push(self.initSupervisors);
 
         getmac.getMac(function (err, mac) {
