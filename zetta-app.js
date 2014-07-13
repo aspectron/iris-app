@@ -339,7 +339,9 @@ function Application(appFolder, appConfig) {
         self.app.set('views', path.join(appFolder,'views'));
         self.app.set('view engine', 'ejs');
         self.app.engine('html', require('ejs').renderFile);
-        self.app.use(require('body-parser')());//express.json());
+      //self.app.use(require('body-parser')());//express.json());
+        self.app.use(require('body-parser').urlencoded({ extended: true }));
+        self.app.use(require('body-parser').json());
         self.app.use(require('method-override')());
         self.app.use(require('cookie-parser')(self.app.sessionSecret));
 
@@ -350,7 +352,9 @@ function Application(appFolder, appConfig) {
                     secret: self.app.sessionSecret,
                     key: self.config.http.session.key,
                     cookie: self.config.http.session.cookie,
-                    store: self.app.sessionStore
+                    store: self.app.sessionStore,
+                    saveUninitialized: true,
+                    resave: true
                 }));
 
                 return callback();
@@ -648,7 +652,7 @@ function Application(appFolder, appConfig) {
             steps.push(self.initExpressHandlers);
             steps.push(self.initHttpServer);
         }
-        self.config.mailer && steps.push(initMailer);
+        self.config.mailer && steps.push(self.initMailer);
         self.config.supervisor && self.config.supervisor.address && steps.push(self.initSupervisors);
 
         getmac.getMac(function (err, mac) {
