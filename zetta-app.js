@@ -75,7 +75,7 @@ function getConfig(name) {
         _.each(src, function(v, k) {
             if(_.isArray(v)) { dst[k] = [ ]; merge(dst[k], v); }
             // if(_.isArray(v)) { if(!_.isArray(dst[k])) dst[k] = [ ]; merge(dst[k], v); }
-            else if(_.isObject(v)) { if(!dst[k]) dst[k] = { };  merge(dst[k], v); }
+            else if(_.isObject(v)) { if(!dst[k] || typeof(dst[k]) != 'object') dst[k] = { };  merge(dst[k], v); }
             else { if(_.isArray(src)) dst.push(v); else dst[k] = v; }
         })
     }
@@ -200,25 +200,38 @@ function Application(appFolder, appConfig) {
     self.initCertificates = function(callback) {
         if(self.verbose)
             console.log('zetta-app: loading certificates from ',appFolder+'/'+self.config.certificates);
-        if(self.certificates)
+        if(self.certificates) {
+            console.error("Warning! initCertificates() is called twice!".redBG.bold);
             callback && callback();
-
-        self.certificates = {
-            key: fs.readFileSync(path.join(appFolder,self.config.certificates)+'.key').toString(),
-            cert: fs.readFileSync(path.join(appFolder,self.config.certificates)+'.crt').toString(),
-            ca: [ ]
+            return;
         }
 
-        /*        var cert = [ ]
-         var chain = fs.readFileSync(__dirname + '/certificates/gd_bundle-g2.crt').toString().split('\n');
-         _.each(chain, function(line) {
-         cert.push(line);
-         if(line.match('/-END CERTIFICATE-/')) {
-         certificates.ca.push(cert.join('\n'));
-         cert = [ ]
-         }
-         })
-         */
+        if(typeof(self.config.certificates) == 'string') {
+
+            self.certificates = {
+                key: fs.readFileSync(path.join(appFolder,self.config.certificates)+'.key').toString(),
+                cert: fs.readFileSync(path.join(appFolder,self.config.certificates)+'.crt').toString(),
+                ca: [ ]
+            }
+        }
+        else
+        {
+            self.certificates = {
+                key: fs.readFileSync(path.join(appFolder,self.config.certificates.key)).toString(),
+                cert: fs.readFileSync(path.join(appFolder,self.config.certificates.crt)).toString(),
+                ca: [ ]
+            }
+
+            var cert = [ ]
+            var chain = fs.readFileSync(path.join(appFolder, self.config.certificates.ca)).toString().split('\n');
+            _.each(chain, function(line) {
+                cert.push(line);
+                if(line.match('/-END CERTIFICATE-/')) {
+                    certificates.ca.push(cert.join('\n'));
+                    cert = [ ]
+                }
+            })
+        }
 
         callback && callback();
     }
