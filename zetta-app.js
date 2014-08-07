@@ -584,7 +584,7 @@ function Application(appFolder, appConfig) {
             })
             socket.on('rpc::request', function(msg) {
                 try {
-                    var listeners = self.listeners(msg.req.op);
+                    var listeners = self.listeners('ws::'+msg.req.op);
                     if(listeners.length == 1) {
                         listeners[0].call(socket, msg.req, function(err, resp) {
                             socket.emit('rpc::response', {
@@ -615,7 +615,7 @@ function Application(appFolder, appConfig) {
 
             socket.on('message', function(msg) {
                 try {
-                    self.emit(msg.op, msg, socket);
+                    self.emit('ws::'+msg.op, msg, socket);
                 }
                 catch(ex) { console.error(ex.stack); }
             });
