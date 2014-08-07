@@ -185,12 +185,13 @@ function Application(appFolder, appConfig) {
         if(self.config.translator) {
             var options = {
                 storagePath: path.join(appFolder,'config'),
-                rootFolderPath: appFolder
+                rootFolderPath: appFolder,
+                enableWatcher: true
             };
             options = _.extend(self.config.translator, options);
 
             self.translator = new Translator(options, function() {
-                self.translator.separateEditor();
+
             });
         }
 
