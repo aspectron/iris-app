@@ -15,6 +15,7 @@
     "getmac" : "*",
     "underscore" : "*",
     "nodemailer" : "*",
+    "nodemailer-pickup-transport" :"*",
     "mongodb" : "*",
     "connect-mongo" : "*",
     "express" : "*",

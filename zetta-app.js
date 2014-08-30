@@ -45,6 +45,7 @@ var zlogin = require('zetta-login');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var nodemailer = require('nodemailer');
+var pickupTransport = require('nodemailer-pickup-transport');
 var mongo = require('mongodb');
 var os = require('os');
 var child_process = require('child_process');
@@ -262,13 +263,13 @@ function Application(appFolder, appConfig) {
         var pickupFolder = path.join(self.appFolder,"mailer");
 
         if(self.config.mailer.pickup) {
-            self.mailer = nodemailer.createTransport("PICKUP", {
+            self.mailer = nodemailer.createTransport( pickupTransport({
                 directory: pickupFolder
-            })
+            }))
         }
         else
         {
-            self.mailer = nodemailer.createTransport("SMTP", self.config.mailer);
+            self.mailer = nodemailer.createTransport(self.config.mailer);
         }
 
         callback();
