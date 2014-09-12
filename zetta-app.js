@@ -57,7 +57,14 @@ console.log = function() {
     args.unshift(zutils.tsString()+' ');
     return _cl.apply(console, args);
 }
-
+function merge(dst, src) {
+    _.each(src, function(v, k) {
+        if(_.isArray(v)) { dst[k] = [ ]; merge(dst[k], v); }
+        // if(_.isArray(v)) { if(!_.isArray(dst[k])) dst[k] = [ ]; merge(dst[k], v); }
+        else if(_.isObject(v)) { if(!dst[k]) dst[k] = { };  merge(dst[k], v); }
+        else { if(_.isArray(src)) dst.push(v); else dst[k] = v; }
+    })
+}
 function getConfig(name) {
 
     var filename = name+'.conf';
@@ -72,14 +79,6 @@ function getConfig(name) {
 
     if(!data[0] && !data[1])
         throw new Error("Unable to read config file:"+(filename+'').magenta.bold)
-    function merge(dst, src) {
-        _.each(src, function(v, k) {
-            if(_.isArray(v)) { dst[k] = [ ]; merge(dst[k], v); }
-            // if(_.isArray(v)) { if(!_.isArray(dst[k])) dst[k] = [ ]; merge(dst[k], v); }
-            else if(_.isObject(v)) { if(!dst[k] || typeof(dst[k]) != 'object') dst[k] = { };  merge(dst[k], v); }
-            else { if(_.isArray(src)) dst.push(v); else dst[k] = v; }
-        })
-    }
 
     var o = { }
     _.each(data, function(conf) {
@@ -168,10 +167,8 @@ function Application(appFolder, appConfig) {
             return;
         var data = fs.readFileSync(host_filename);
         var settings = eval('('+data.toString('utf-8')+')');
-        _.each(settings, function(o, key) {
-            if(self.settings[key])
-                self.settings[key].value = o.value;
-        })
+
+        merge(self.settings, settings);
     }
 
     self.storeSettings = function(name) {
