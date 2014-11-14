@@ -225,7 +225,7 @@ function Application(appFolder, appConfig) {
             _.each(chain, function(line) {
                 cert.push(line);
                 if(line.match('/-END CERTIFICATE-/')) {
-                    certificates.ca.push(cert.join('\n'));
+                    self.certificates.ca.push(cert.join('\n'));
                     cert = [ ]
                 }
             })
