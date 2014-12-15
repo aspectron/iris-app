@@ -29,6 +29,7 @@ var os = require('os');
 var util = require('util');
 var events = require('events');
 
+var cluster = require('cluster');
 var http = require('http');
 var https = require('https');
 var connect = require('connect');
@@ -51,9 +52,12 @@ var os = require('os');
 var child_process = require('child_process');
 var Translator = require('zetta-translator');
 
+var __cluster_worker_id = process.env['ZETTA_CLUSTER_ID'];
 var _cl = console.log;
 console.log = function() {
     var args = Array.prototype.slice.call(arguments, 0);
+    if(__cluster_worker_id !== undefined)
+        args.unshift('['+__cluster_worker_id+'] ');
     args.unshift(zutils.tsString()+' ');
     return _cl.apply(console, args);
 }
@@ -145,6 +149,10 @@ function Application(appFolder, appConfig) {
     }
 
     self.pingDataObject = { }
+
+    self.isCluster = self.config.http && self.config.http.cluster;
+    self.isMaster = (!self.isCluster) || (self.isCluster && cluster.isMaster);
+    self.isWorker = (!self.isCluster) || (self.isCluster && cluster.isWorker);
 
     // ---
 
@@ -544,6 +552,64 @@ function Application(appFolder, appConfig) {
         });
     };
 
+    self.initCluster = function(callback) {
+
+        if(cluster.isMaster) {
+
+            self.workers = []
+
+            var nWorkers = os.cpus().length;            
+            if(self.config.http.cluster && self.config.http.cluster.workers)
+                nWorkers = self.config.http.cluster.workers;
+            else
+            if(parseInt(self.config.http.cluster))
+                nWorkers = parseInt(self.config.http.cluster);
+
+            console.log("Cluster: Spawning "+nWorkers+" workers");
+
+            var runWorker = function(i) {
+                var worker = self.workers[i] = cluster.fork({ ZETTA_CLUSTER_ID : i });
+
+                // Optional: Restart worker on exit
+                worker.on('exit', function(worker, code, signal) {
+                    console.log('respawning worker', i);
+                    spawn(i);
+                });
+
+                worker.on('message', function(msg) {
+                    if(!msg.op) {
+                        console.log("Unknown message from worker:",msg);
+                        return;
+                    }
+
+                    // msg.worker = worker;
+                    // msg.worker_id = i;
+                    self.emit(msg.op,msg,worker);
+                });
+            };
+
+            // Spawn workers.
+            for (var i = 0; i < nWorkers; i++)
+                runWorker(i);
+        }
+        else
+        if(cluster.isWorker)
+        {
+            self.__cluster_worker_id = parseInt(process.env['ZETTA_CLUSTER_ID']);
+
+            process.on('message', function(msg) {
+                if(!msg.op) {
+                    console.log("Unknown message from master:", msg);
+                    return;
+                }
+
+                self.emit(msg.op,msg);
+            })
+        }
+
+        callback();        
+    }
+
     self.initSupervisors = function(callback) {
         // console.log("initSupervisors");
         if(!self.certificates)
@@ -659,12 +725,17 @@ function Application(appFolder, appConfig) {
             steps.push(fn);
         })
         if(self.config.http) {
-            steps.push(self.initExpressConfig);
-            steps.push(self.initExpressHandlers);
-            steps.push(self.initHttpServer);
+            if(self.isCluster)
+                steps.push(self.initCluster);
+            
+            if(self.isWorker) {
+                steps.push(self.initExpressConfig);
+                steps.push(self.initExpressHandlers);
+                steps.push(self.initHttpServer);
+            }
         }
         self.config.mailer && steps.push(self.initMailer);
-        self.config.supervisor && self.config.supervisor.address && steps.push(self.initSupervisors);
+        self.isMaster && self.config.supervisor && self.config.supervisor.address && steps.push(self.initSupervisors);
 
         getmac.getMac(function (err, mac) {
             if (err) return callback(err);
@@ -683,7 +754,7 @@ function Application(appFolder, appConfig) {
             }
             self.uuid = uuid;
 
-            console.log("App UUID:".bold,self.uuid.bold);
+            self.isMaster && console.log("App UUID:".bold,self.uuid.bold);
 
             _.each(initSteps_, function(fn) {
                 steps.push(fn);
@@ -708,7 +779,7 @@ function Application(appFolder, appConfig) {
 
     self.caption = self.pkg.name;
     dpc(function() {
-        if(self.caption) {
+        if(self.isMaster && self.caption) {
             zutils.render(self.caption.replace('-',' '), null, function(err, caption) {
                 console.log('\n'+caption);
                 dpc(function() {
