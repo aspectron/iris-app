@@ -61,7 +61,7 @@ function merge(dst, src) {
     _.each(src, function(v, k) {
         if(_.isArray(v)) { dst[k] = [ ]; merge(dst[k], v); }
         // if(_.isArray(v)) { if(!_.isArray(dst[k])) dst[k] = [ ]; merge(dst[k], v); }
-        else if(_.isObject(v)) { if(!dst[k]) dst[k] = { };  merge(dst[k], v); }
+        else if(_.isObject(v)) { if(!dst[k] || _.isString(dst[k]) || !_.isObject(dst[k])) dst[k] = { };  merge(dst[k], v); }
         else { if(_.isArray(src)) dst.push(v); else dst[k] = v; }
     })
 }
