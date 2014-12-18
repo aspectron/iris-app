@@ -802,5 +802,6 @@ Application.writeJSON = writeJSON;
 
 module.exports = {
     Application : Application,
-    getConfig : getConfig
+    getConfig : getConfig,
+    inherits : util.inherits
 }
