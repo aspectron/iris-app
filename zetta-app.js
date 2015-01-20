@@ -64,7 +64,6 @@ console.log = function() {
 function merge(dst, src) {
     _.each(src, function(v, k) {
         if(_.isArray(v)) { dst[k] = [ ]; merge(dst[k], v); }
-        // if(_.isArray(v)) { if(!_.isArray(dst[k])) dst[k] = [ ]; merge(dst[k], v); }
         else if(_.isObject(v)) { if(!dst[k] || _.isString(dst[k]) || !_.isObject(dst[k])) dst[k] = { };  merge(dst[k], v); }
         else { if(_.isArray(src)) dst.push(v); else dst[k] = v; }
     })
@@ -301,7 +300,7 @@ function Application(appFolder, appConfig) {
             if(!db)
                 throw new Error("Config missing database configuration for '"+name+"'");
 
-            mongo.Db.connect(db, function (err, database) {
+            mongo.MongoClient.connect(db, function (err, database) {
                 if (err)
                     return callback(err);
 
@@ -324,7 +323,7 @@ function Application(appFolder, appConfig) {
         self.db = { }
         self.databases = { }
 
-        mongo.Db.connect(self.config.mongodb, function (err, database) {
+        mongo.MongoClient.connect(self.config.mongodb, function (err, database) {
             if (err)
                 return callback(err);
 
@@ -366,18 +365,17 @@ function Application(appFolder, appConfig) {
 
         if(self.config.mongodb) {
             var MongoStore = require('connect-mongo')(ExpressSession);
-            self.app.sessionStore = new MongoStore({url: self.config.mongodb.main || self.config.mongodb}, function() {
-                self.app.use(ExpressSession({
-                    secret: self.app.sessionSecret,
-                    key: self.config.http.session.key,
-                    cookie: self.config.http.session.cookie,
-                    store: self.app.sessionStore,
-                    saveUninitialized: true,
-                    resave: true
-                }));
+            self.app.sessionStore = new MongoStore({url: self.config.mongodb.main || self.config.mongodb});
+            self.app.use(ExpressSession({
+                secret: self.app.sessionSecret,
+                key: self.config.http.session.key,
+                cookie: self.config.http.session.cookie,
+                store: self.app.sessionStore,
+                saveUninitialized: true,
+                resave: true
+            }));
 
-                return callback();
-            });
+            return callback();
         }
         else
         if(self.config.http && self.config.http.session) {
