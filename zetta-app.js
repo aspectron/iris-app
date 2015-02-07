@@ -38,6 +38,9 @@ var socketio = require("socket.io");
 var path = require('path');
 var UUID = require('node-uuid');
 var crypto = require('crypto');
+var CookieSignature = require('cookie-signature');
+var Cookie = require('cookie');
+var Cookies = require('cookies');
 
 var zutils = require('zetta-utils');
 var zstats = require('zetta-stats');
@@ -350,6 +353,7 @@ function Application(appFolder, appConfig) {
     self.initExpressConfig = function(callback) {
         var ExpressSession = require('express-session');
 
+        self.express = express;
         self.app = express();
 
         self.app.sessionSecret = self.getHttpSessionSecret();
@@ -379,12 +383,26 @@ function Application(appFolder, appConfig) {
         }
         else
         if(self.config.http && self.config.http.session) {
+//            self.app.sessionStore = new Cookies();
+
+            self.expressSession = ExpressSession({
+                secret: self.app.sessionSecret,
+                key: self.config.http.session.key,
+                cookie: self.config.http.session.cookie,
+  //              store: self.app.sessionStore,
+                saveUninitialized: true,
+                resave: true
+            })
+//console.log(self.expressSession);
+            self.app.use(self.expressSession);
+            
+/*
             var CookieSession = require('cookie-session');
             self.app.use(CookieSession({
                 secret: self.app.sessionSecret,
                 key: self.config.http.session.key,
             }));
-
+*/
             return callback();
         }
     }
@@ -684,6 +702,33 @@ function Application(appFolder, appConfig) {
 
         callback();
     }
+
+
+    function unsignCookies(obj, secret){
+        var ret = {};
+        Object.keys(obj).forEach(function(key){
+            var val = obj[key];
+            if (0 == val.indexOf('s:')) {
+                val = CookieSignature.unsign(val.slice(2), secret);
+                if (val) {
+                    ret[key] = val;
+                    delete obj[key];
+                }
+            }
+        });
+        return ret;
+    };
+
+    self.getSocketSession = function(socket, callback) {
+        var cookies = unsignCookies(Cookie.parse(socket.handshake.headers.cookie), self.getHttpSessionSecret());
+        var sid = cookies['connect.sid'];
+        // console.log(cookies);
+        if(self.app.sessionStore)
+            return self.app.sessionStore.get(sid, callback);
+        else
+            callback(null, cookies);
+    };
+
 
     // --
 

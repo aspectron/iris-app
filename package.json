@@ -1,7 +1,7 @@
 {
   "name": "zetta-app",
   "description": "Zetta Toolkit - Application Framework",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "author": {
     "name": "ASPECTRON Inc.",
     "email": "info@aspectron.com"
@@ -23,6 +23,8 @@
     "socket.io" : "*",
     "ejs" : "*",
     "jade" : "*",
+    "cookie" : "*",
+    "cookie-signature" : "*",
     "basic-auth" : "*",
     "express-session" : "*",
     "cookie-session" : "*",
