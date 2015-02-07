@@ -355,8 +355,8 @@ function Application(appFolder, appConfig) {
         self.app.sessionSecret = self.getHttpSessionSecret();
 
         self.app.set('views', path.join(appFolder,'views'));
-        self.app.set('view engine', 'ejs');
-        self.app.engine('html', require('ejs').renderFile);
+        self.app.set('view engine', self.config.http.engine || 'ejs');
+        (self.config.http.engine == 'ejs') && self.app.engine('html', require('ejs').renderFile);
       //self.app.use(require('body-parser')());//express.json());
         self.app.use(require('body-parser').urlencoded({ extended: true }));
         self.app.use(require('body-parser').json());
