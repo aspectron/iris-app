@@ -40,7 +40,7 @@ var UUID = require('node-uuid');
 var crypto = require('crypto');
 var CookieSignature = require('cookie-signature');
 var Cookie = require('cookie');
-var Cookies = require('cookies');
+// var Cookies = require('cookies');
 
 var zutils = require('zetta-utils');
 var zstats = require('zetta-stats');
