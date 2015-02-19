@@ -361,6 +361,11 @@ function Application(appFolder, appConfig) {
         self.app.set('views', path.join(appFolder,'views'));
         self.app.set('view engine', self.config.http.engine || 'ejs');
         (self.config.http.engine == 'ejs') && self.app.engine('html', require('ejs').renderFile);
+        if(self.config.http.engine == 'ect') {
+            var ECT = require('ect');
+            self.ectRenderer = ECT({ watch : true, root: path.join(appFolder,'views'), ect : '.ect' });
+            self.app.engine('ect', self.ectRenderer.render);
+        }
       //self.app.use(require('body-parser')());//express.json());
         self.app.use(require('body-parser').urlencoded({ extended: true }));
         self.app.use(require('body-parser').json());
@@ -479,6 +484,7 @@ function Application(appFolder, appConfig) {
             })
         }
 
+        self.emit('init::express::error', self.app);
         self.emit('init::express::error-handlers', self.app);
 
         /**
@@ -701,6 +707,33 @@ function Application(appFolder, appConfig) {
         });
 
         callback();
+    }
+
+    self.getClientIp = function(req) {
+        var ipAddress = req.query.ip;
+
+        if(!ipAddress) {
+            ipAddress = req.header('CF-Connecting-IP');
+        }
+
+        if(!ipAddress) {
+            // This is cloud-flare based
+            var forwardedIpsStr = req.header('X-Forwarded-For');
+            if (forwardedIpsStr) {
+                var forwardedIps = forwardedIpsStr.split(',');
+                ipAddress = forwardedIps.pop();
+            }
+        }
+
+        // If using nginx proxy, one must add the following directive to location
+        // proxy_set_header X-Real-IP $remote_addr;
+        if(!ipAddress)
+            ipAddress = req.header('X-Real-IP');
+
+        if (!ipAddress)
+            ipAddress = req.connection.remoteAddress;
+
+        return ipAddress;
     }
 
 
