@@ -542,6 +542,44 @@ function Application(appFolder, appConfig) {
 
     };
 
+    self.initACME = function(callback) {
+
+        var desiredIdentifier = self.config.acme.fqdn;
+        var acmeServer = self.config.acme.authServer || "www.letsencrypt-demo.org";
+        var authzURL = "https://" + acmeServer + "/acme/new-authz";
+        var certURL = "https://" + acmeServer + "/acme/new-cert";
+        console.log("Obtaining ACME Certificates..".bold);
+        acme.getMeACertificate(authzURL, certURL, desiredIdentifier, function(x) {
+            console.log("Result of getMeACertificate:");
+            console.log(x);
+
+            callback();
+        });
+
+    }
+
+
+    self.secureUnderUser = function(username, callback) {
+        if(process.platform != 'win32') {
+            exec('id -u '+username, function(err, stdout, stderr) {
+                if(!err) {
+                    var uid = parseInt(stdout);
+                    if(uid) {
+                        console.log('Setting process UID to:',uid);
+                        process.setuid(uid);
+                    }
+
+                }
+                
+                callback && callback();
+            });
+        }
+        else {
+            callback && callback();
+        }
+    }
+
+
     self.initHttpServer = function(callback) {
 
         var CERTIFICATES = (self.config.http.ssl && self.config.certificates) ? self.certificates : null;
@@ -566,11 +604,15 @@ function Application(appFolder, appConfig) {
 
             if (self.config.secure_under_username) {
                 console.log("Securing run-time to user '" + self.config.secure_under_username + "'");
-                zutils.secure_under_username(self.config.secure_under_username);
+                self.secureUnderUser(self.config.secure_under_username, finish);
             }
+            else
+                finish();
 
-            self.emit('init::http-server')
-            callback();
+            function finish() {
+                self.emit('init::http-server')
+                callback();
+            }
         });
     };
 
@@ -791,7 +833,9 @@ function Application(appFolder, appConfig) {
         var steps = new zutils.Steps();
 
 
-        self.config.translator && steps.push(self.initTranslator);
+        self.config.acme && steps.push(self.initACME);
+
+        // self.config.translator && steps.push(self.initTranslator);
         self.config.certificates && steps.push(self.initCertificates);
         self.config.statsd && steps.push(self.initMonitoringInterfaces);
         self.config.mongodb && self.databaseConfig && steps.push(self.initDatabaseConfig);
@@ -801,6 +845,7 @@ function Application(appFolder, appConfig) {
             steps.push(fn);
         })
         if(self.config.http) {
+
             if(self.isCluster)
                 steps.push(self.initCluster);
             
