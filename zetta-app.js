@@ -559,7 +559,8 @@ function Application(appFolder, appConfig) {
     }
 
 
-    self.secureUnderUser = function(username, callback) {
+    self.secureUnderUser = function(callback) {
+        var username = self.config.secureUnderUser;
         if(process.platform != 'win32') {
             exec('id -u '+username, function(err, stdout, stderr) {
                 if(!err) {
@@ -571,11 +572,11 @@ function Application(appFolder, appConfig) {
 
                 }
                 
-                callback && callback();
+                callback();
             });
         }
         else {
-            callback && callback();
+            callback();
         }
     }
 
@@ -584,37 +585,50 @@ function Application(appFolder, appConfig) {
 
         var CERTIFICATES = (self.config.http.ssl && self.config.certificates) ? self.certificates : null;
 
-        var https_server = CERTIFICATES ? https.createServer(CERTIFICATES, self.app) : http.createServer(self.app);
-        self.io = socketio.listen(https_server, { 'log level': 0, 'secure': CERTIFICATES ? true : false });
+        var server = CERTIFICATES ? https.createServer(CERTIFICATES, self.app) : http.createServer(self.app);
+        self.io = socketio.listen(server, { 'log level': 0, 'secure': CERTIFICATES ? true : false });
         if(self.router && self.router.initWebSocket)
             self.router.initWebSocket(self.io);
         self.config.websocket && self.initWebsocket(function(){});
         self.emit('init::websockets');
         self.emit('init::http::done');
-        https_server.listen(self.config.http.port, function (err) {
+        var args = [ ]
+        args.push(self.config.http.port);
+        self.config.http.host && args.push(self.config.http.host);
+
+        args.push(function (err) {
             if (err) {
-                console.error("Unable to start HTTP(S) server on port" + self.config.http.port);
+                console.error("Unable to start HTTP(S) server on port " + self.config.http.port + (self.config.http.host ? " host '"+self.config.http.host+"'" : ''));
                 return callback(err);
             }
 
-            console.log('HTTP server listening on port ' + (self.config.http.port+'').bold);
+            console.log('HTTP server listening on port ' + (self.config.http.port+'').bold + (self.config.http.host ? " host '"+self.config.http.host+"'" : ''));
 
             if (!CERTIFICATES)
-                console.log(("WARNING - SSL is currently disabled").magenta.bold);
+                console.log(("WARNING - SSL is currently disabled").yellow.bold);
 
-            if (self.config.secure_under_username) {
-                console.log("Securing run-time to user '" + self.config.secure_under_username + "'");
-                self.secureUnderUser(self.config.secure_under_username, finish);
-            }
-            else
-                finish();
+            self.emit('init::http-server')
+            callback();
+        })
 
-            function finish() {
-                self.emit('init::http-server')
-                callback();
-            }
-        });
+        server.listen.apply(server, args);
     };
+
+    self.initRedirectToSSL = function(callback) {
+        var port = 80;
+        var http_app = express();
+        http_app.get('*', function (req, res) {
+            res.redirect("https://" + req.headers.host + req.url);
+        })
+        http.createServer(http_app).listen(port, function(err) {
+            if (err) {
+                console.error(("Unable to start HTTP redirector on port" + port).magenta.bold);
+                return callback(err);
+            }
+            console.log("HTTP redirector listening on port " + (port+'').bold);
+            callback && callback();
+        });
+    }
 
     self.initCluster = function(callback) {
 
@@ -832,6 +846,7 @@ function Application(appFolder, appConfig) {
 
         var steps = new zutils.Steps();
 
+        self.emit('init::begin', steps);
 
         self.config.acme && steps.push(self.initACME);
 
@@ -855,8 +870,15 @@ function Application(appFolder, appConfig) {
                 steps.push(self.initHttpServer);
             }
         }
+        self.config.http.redirectToSSL && steps.push(self.initRedirectToSSL);
         self.config.mailer && steps.push(self.initMailer);
         self.isMaster && self.config.supervisor && self.config.supervisor.address && steps.push(self.initSupervisors);
+
+        if(self.config.secure_under_username) {
+            self.config.secureUnderUser = self.config.secure_under_username;
+            console.log("WARNING: config.secure_under_username is DEPRECATED, please use config.secureUnderUser".yellow.bold);
+        }
+        self.config.secureUnderUser && steps.push(self.secureUnderUser);
 
         getmac.getMac(function (err, mac) {
             if (err) return callback(err);
