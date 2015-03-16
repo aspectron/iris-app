@@ -374,7 +374,7 @@ function Application(appFolder, appConfig) {
 
         if(self.config.mongodb) {
             var MongoStore = require('connect-mongo')(ExpressSession);
-            self.app.sessionStore = new MongoStore({url: self.config.mongodb.main || self.config.mongodb});
+            self.app.sessionStore = new MongoStore({url: self.config.mongodb.sessionStore || self.config.mongodb.main || self.config.mongodb});
             self.app.use(ExpressSession({
                 secret: self.app.sessionSecret,
                 key: self.config.http.session.key,
