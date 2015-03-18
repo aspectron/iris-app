@@ -309,7 +309,8 @@ function Application(appFolder, appConfig) {
 
                 self.databases[name] = database;
 
-                console.log("DB '" + (name) + "' connected", self.config.mongodb[name].bold);
+                var lp = self.config.mongodb[name].indexOf('@');
+                console.log("DB '" + (name) + "' connected", lp == -1 ? self.config.mongodb[name].bold : self.config.mongodb[name].substring(lp+1).bold );
                 zutils.bind_database_config(database, config.collections, function (err, db) {
                     if (err)
                         return callback(err);
