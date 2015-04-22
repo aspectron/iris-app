@@ -83,8 +83,10 @@ function getConfig(name) {
     fs.existsSync(host_filename) && data.push(fs.readFileSync(host_filename) || null);
     fs.existsSync(local_filename) && data.push(fs.readFileSync(local_filename) || null);
 
-    if(!data[0] && !data[1])
-        throw new Error("Unable to read config file:"+(filename+'').magenta.bold)
+    if(!data[0] && !data[1]) {
+        console.error("Unable to read config file:"+(filename+'').magenta.bold);
+        throw new Error("Unable to read config file:"+(filename+''));
+    }
 
     var o = { }
     _.each(data, function(conf) {
