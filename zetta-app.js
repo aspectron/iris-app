@@ -119,6 +119,42 @@ function writeJSON(filename, data) {
     fs.writeFileSync(filename, JSON.stringify(data, null, '\t'));
 }
 
+GLOBAL.dpc = function(t,fn) { if(typeof(t) == 'function') setImmediate(t); else setTimeout(fn,t); }
+
+function asyncMap(_list, fn, callback) {
+    if(!_list || !_.isArray(_list))
+        return callback(new Error("asyncMap() supplied argument is not array"));
+    var list = _list.slice();
+    var result = [ ]
+    digest();
+    function digest() {
+        var item = list.shift();
+        if(!item)
+            return callback(null, result);
+        fn(item, function(err, data) {
+            if(err)
+                return callback(err);
+            data && result.push(data);
+            dpc(digest);
+        })
+    }
+}
+
+function asyncLoop(fn, callback) {
+    digest();
+    function digest() {
+        fn(function(err, done) {
+            if(err)
+                return callback(err);
+            if(done)
+                return callback();
+
+            dpc(digest);
+        })
+    }
+}
+
+
 function Application(appFolder, appConfig) {
     var self = this;
     events.EventEmitter.call(this);
@@ -135,6 +171,8 @@ function Application(appFolder, appConfig) {
     self.getConfig = function(name) { return getConfig(path.join(appFolder,'config', name)) }
     self.readJSON = readJSON;
     self.writeJSON = writeJSON;
+    self.asyncLoop = asyncLoop;
+    self.asyncMap = asyncMap;
 
     self.config = self.getConfig(self.pkg.name);
 
@@ -872,8 +910,9 @@ function Application(appFolder, appConfig) {
                 steps.push(self.initExpressHandlers);
                 steps.push(self.initHttpServer);
             }
+
+            self.config.http.redirectToSSL && steps.push(self.initRedirectToSSL);
         }
-        self.config.http.redirectToSSL && steps.push(self.initRedirectToSSL);
         self.config.mailer && steps.push(self.initMailer);
         self.isMaster && self.config.supervisor && self.config.supervisor.address && steps.push(self.initSupervisors);
 
