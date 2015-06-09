@@ -12,6 +12,7 @@
     "zetta-rpc" : "*",
     "zetta-translator" : "*",
     "zetta-login" : "*",
+    "zetta-base58" : "*",
     "getmac" : "*",
     "underscore" : "*",
     "nodemailer" : "*",
@@ -36,7 +37,9 @@
     "serve-static" : "*",
     "errorhandler" : "*",
     "node-uuid" : "*",
-    "bcrypt-nodejs" : "*"
+    "bcrypt-nodejs" : "*",
+    "notp" : "*",
+    "thirty-two" : "*"
   },
   "keywords": [
     "utilities",

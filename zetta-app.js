@@ -54,6 +54,8 @@ var mongo = require('mongodb');
 var os = require('os');
 var child_process = require('child_process');
 var Translator = require('zetta-translator');
+var ClientRPC = require('./lib/client-rpc');
+var Login = require('./lib/login');
 
 var __cluster_worker_id = process.env['ZETTA_CLUSTER_ID'];
 var _cl = console.log;
@@ -146,7 +148,7 @@ function asyncLoop(fn, callback) {
         fn(function(err, done) {
             if(err)
                 return callback(err);
-            if(done)
+            if(done === true)
                 return callback();
 
             dpc(digest);
@@ -154,6 +156,29 @@ function asyncLoop(fn, callback) {
     }
 }
 
+function asyncSteps() {
+    var self = this;
+    self.steps = [ ]
+
+    self.push = function(fn) {
+        self.steps.push(fn);
+    }
+
+    self.run = function(callback) {
+        run_step();
+        function run_step() {
+            var step = self.steps.shift();
+            if(!step)
+                return callback();
+
+            step.call(this, function(err) {
+                if(err)
+                    return callback(err);
+                run_step();
+            });
+        }
+    }
+}
 
 function Application(appFolder, appConfig) {
     var self = this;
@@ -173,6 +198,7 @@ function Application(appFolder, appConfig) {
     self.writeJSON = writeJSON;
     self.asyncLoop = asyncLoop;
     self.asyncMap = asyncMap;
+    self.asyncSteps = asyncSteps;
 
     self.config = self.getConfig(self.pkg.name);
 
@@ -630,7 +656,13 @@ function Application(appFolder, appConfig) {
         self.io = socketio.listen(server, { 'log level': 0, 'secure': CERTIFICATES ? true : false });
         if(self.router && self.router.initWebSocket)
             self.router.initWebSocket(self.io);
-        self.config.websocket && self.initWebsocket(function(){});
+        self.config.websocket && self.initWebsocket_v1(function(){});
+        /*if(self.config.http.rpc) {
+            if(typeof(self.config.http.rpc == 'string'))
+                self.clientRPC = new ClientRPC(self, { path : self.config.http.rpc })
+            else
+                self.clientRPC = new ClientRPC(self, self.config.http.rpc);
+        }*/
         self.emit('init::websockets');
         self.emit('init::http::done');
         var args = [ ]
@@ -753,7 +785,7 @@ function Application(appFolder, appConfig) {
         })
     }
 
-    self.initWebsocket = function(callback) {
+    self.initWebsocket_v1 = function(callback) {
         self.webSocketMap = [ ]
         self.webSockets = self.io.of(self.config.websocket.path).on('connection', function(socket) {
             console.log("websocket "+socket.id+" connected");
@@ -805,6 +837,7 @@ function Application(appFolder, appConfig) {
 
         callback();
     }
+
 
     self.getClientIp = function(req) {
         var ipAddress = req.query.ip;
@@ -858,6 +891,59 @@ function Application(appFolder, appConfig) {
         else
             callback(null, cookies);
     };
+
+    self.getSocketSessionId = function(socket) {
+
+        //console.log("HANDSHAKE HEADERS COOKIE:".blueBG.bold, socket.handshake.headers.cookie);
+        //console.log("HTTP SECRET:".blueBG.bold,self.config.http.session.secret);
+
+        var cookies = unsignCookies(Cookie.parse(socket.handshake.headers.cookie), core.getHttpSessionSecret());
+        // console.log("COOKIES:".blueBG.bold,cookies);
+        var sid = cookies['connect.sid'];
+        return sid;
+    };
+
+    // --
+
+
+    var defaultRouting_ = {}
+
+    self.defaultRouting = function(src, dest) {
+        defaultRouting_.src = src;
+        defaultRouting_.dest = dest;
+    }
+
+    self.route = function(rec) {
+        console.log(("INSTALLING ROUTE..."+rec.op).green.bold);
+        var src = rec.src || defaultRouting_.src;
+        var dest = rec.dest || defaultRouting_.dest;
+        src.on(rec.op, function(args, callback) {
+            console.log("PROCESSING ROUTE".magenta.bold,args.op);
+
+
+
+            if(rec.private && !args.token)
+                return callback({ error : "User must be logged in." })
+
+            if(rec.filter) {
+                var src = args;
+                var dst = { }
+                //_.each(rec.filter, function(info, ident) {
+                for(var ident in args) {
+                    var arg = args[ident];
+
+                    //if(info === true && !arg)
+                    //    return callback({ error : "Validation filter failure '"+ident+"'"});
+                    dst[ident] = arg;
+                }
+                args = dst;
+            }
+
+
+            dest.dispatch(args, callback);
+        })
+    }
+
 
 
     // --
@@ -976,10 +1062,19 @@ function Application(appFolder, appConfig) {
             self.run();
         }
     })
-
 }
 
 util.inherits(Application, events.EventEmitter);
+
+// -----------------------------------------------------------
+
+
+
+function Authenticator(core) {
+    var self = this;
+
+}
+
 
 Application.getConfig = getConfig;
 Application.readJSON = readJSON;
@@ -988,5 +1083,7 @@ Application.writeJSON = writeJSON;
 module.exports = {
     Application : Application,
     getConfig : getConfig,
-    inherits : util.inherits
+    inherits : util.inherits,
+    ClientRPC : ClientRPC,
+    Login : Login
 }

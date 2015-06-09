@@ -1,0 +1,209 @@
+
+<polymer-element name="zetta-rpc" attributes="path timeout trace">
+ <script>
+   Polymer('zetta-rpc', {
+
+//    id : 'main',
+    path : '/rpc',
+    online : false,
+    timeout : 30,
+
+    created : function() {
+        this.subscriptions = { };
+        this.pending = { };
+        this._req = 1;
+
+        this.events = new BRT.types.Events();
+    },
+
+    ready : function() {
+        var self = this;
+
+        if(!BRT.rpc)
+            BRT.rpc = { }
+        if(BRT.rpc[this.id])
+            throw new Error("BRT RPC with id "+this.id+" already exists");
+        BRT.rpc[this.id] = this;
+
+        self.timeout = this.timeout || 30;
+        self.connected = false;
+
+    	self.events.emitAsync('rpc-connecting');
+        self.socket = io(window.location.origin+this.path);
+        self.socket.on('ready', function(){
+            self.online = true;
+        })
+        self.socket.on('connect', function() {
+            console.log("BRT RPC connected");
+            self.events.emit('rpc-connect');
+        })
+        self.socket.on('error', function() { 
+            console.log("BRT RPC error", arguments);
+        	self.events.emit('rpc-error');
+        })
+        self.socket.on('disconnect', function() { 
+            self.online = false;
+            console.log("BRT RPC disconnected",arguments);
+   			self.events.emit('rpc-disconnect');
+
+            _.each(self.pending, function(info, id) {
+                info.callback({ error : "Connection Closed"});
+            })
+
+            self.pending = { }
+        })
+
+        self.socket.on('message', function(msg) {
+            if(self.trace) {
+                if(self.trace === 1 || self.trace === true)
+                    console.log('RPC ['+self.id+']:',msg.op);
+                else
+                if(self.trace === 2)
+                    console.log('RPC ['+self.id+']:',msg.op,msg);                
+            }
+        	self.events.emit(msg.op, msg);
+        })
+
+        self.socket.on('rpc::response', function(msg) {
+            if(msg._resp && self.pending[msg._resp])
+                self.pending[msg._resp].callback.call(this, msg.err, msg.resp);
+            else
+            if(!self.pending[msg._resp]) {
+                console.log("BRT RPC received unknown rpc callback (strange server-side retransmit?)");
+            }
+            delete self.pending[msg._resp];
+        })
+
+        function timeoutMonitor() {
+            // var self = this;
+            var ts = Date.now();
+            var purge = [ ]
+            _.each(this.pending, function(info, id) {
+                if(ts - info.ts > self.timeout * 1000) {
+                    info.callback({ error : "Timeout "});
+                    purge.push(id);
+                }
+            })
+            _.each(purge, function(id) {
+                delete pending[id];
+            })
+            BRT.dpc(1000, timeoutMonitor);
+        }
+        BRT.dpc(1000, timeoutMonitor);
+    },
+
+    on : function(op, callback) {
+        this.events.on(op, callback);
+    },
+
+    dispatch : function(msg, callback) {
+
+        if(!callback)
+            return this.socket.emit('message', msg);
+
+        this.pending[this._req] = {
+            ts : Date.now(),
+            callback : function(err, resp) {
+                callback(err, resp);
+            }
+        }
+
+        this.socket.emit('rpc::request', { 
+            req : msg,
+            _req : this._req,
+        });
+
+        this._req++;
+    },
+
+
+//    timeoutMonitor();
+
+   });
+ </script>
+</polymer-element>
+
+
+<polymer-element name="zetta-rpc-client" attributes="pair">
+ <script>
+ 
+   Polymer('zetta-rpc-client', {
+//BRT.define('BRT.types.RPC.Client', function() {
+/*	var self = this;
+//	BRT.types.Events.apply(self, arguments);
+    BRT.inherit(self, 'BRT.types.Events');
+//	BRT.rpc.addListener(self);
+
+    self.rpc = { 
+        handlers : [ ]
+    }
+
+    self.rpc.on = function(op,fn) {
+        self.rpc.handlers.push(BRT.rpc.on(op, fn));
+    }
+
+    self.on('destroy', function() {
+        _.each(self.rpc.handlers, function(uuid) {
+            BRT.rpc.off(uuid);
+        })
+    })
+*/
+})
+
+ </script>
+</polymer-element>
+
+<script>
+
+BRT.define('BRT.subscribe', function(owner, options, fn) {
+
+    var op = options.realm+':'+options.op+':'+options.ident;
+
+    var sub = BRT.subscriptions[op];
+    if(!sub)
+        sub = BRT.subscriptions[op] = []
+
+    sub.push({
+        owner : owner,
+        options : options,
+        fn : fn
+    })
+
+    //var rpc = BRT.find('zetta-rpc#main');
+
+    BRT.rpc.main.dispatch({
+        op : 'subscribe',
+        info : options
+    }, function(err, resp) {
+        // if(err)
+
+
+    });
+
+
+    BRT.types.Events.Sink(owner, BRT.rpc.main.events, op, function(args) {
+        fn.apply(owner, arguments);
+    })
+    // BRT.inherit(target, 'BRT.types.RPC.Client');
+/*    target.rpc.on(options.op, function(args) {
+        fn.apply(target, arguments);
+    })
+*/    
+//        target.EventSink()
+
+
+})
+
+BRT.define('BRT.unsubscribe', function(owner, options) {
+    //var rpc = BRT.find('zetta-rpc#main');
+    BRT.rpc.main.dispatch({
+        op : 'unsubscribe',
+        info : options
+    }, function(err, resp) {
+
+    })
+
+
+})
+
+</script>
