@@ -45,7 +45,6 @@ var Cookie = require('cookie');
 var zutils = require('zetta-utils');
 var zstats = require('zetta-stats');
 var zrpc = require('zetta-rpc');
-var zlogin = require('zetta-login');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var nodemailer = require('nodemailer');
@@ -524,19 +523,7 @@ function Application(appFolder, appConfig) {
             }
 
             next();
-        })
-
-        var loginConfig = self.config.http.login;
-        if(loginConfig && loginConfig.authenticator) {
-            switch(loginConfig.authenticator.type) {
-                case 'basic' : {
-                    console.log("Enabling basic authenticator".bold);
-                    self.authenticator = new zlogin.BasicAuthenticator(self, loginConfig.authenticator);
-                    self.login = new zlogin.Login(self, self.authenticator, loginConfig);
-                    self.login.init(self.app);
-                } break;
-            }
-        }
+        });
 
         if(self.router)
             self.router.init(self.app);
