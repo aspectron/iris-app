@@ -873,7 +873,14 @@ function Application(appFolder, appConfig) {
         var cookies = unsignCookies(Cookie.parse(socket.handshake.headers.cookie), self.getHttpSessionSecret());
         var sid = cookies['connect.sid'];
         if(self.app.sessionStore)
-            return self.app.sessionStore.get(sid, callback);
+            return self.app.sessionStore.get(sid, function(err, session){
+                if (!session)
+                    return callback(err);
+
+                session.id = sid;
+
+                callback(err, session);
+            });
         else
             callback(null, cookies);
     };
