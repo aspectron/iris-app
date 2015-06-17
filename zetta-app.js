@@ -455,12 +455,12 @@ function Application(appFolder, appConfig) {
         else
         if(self.config.http && self.config.http.session) {
 //            self.app.sessionStore = new Cookies();
-
+            self.app.sessionStore = new ExpressSession.MemoryStore;
             self.expressSession = ExpressSession({
                 secret: self.app.sessionSecret,
                 key: self.config.http.session.key,
                 cookie: self.config.http.session.cookie,
-  //              store: self.app.sessionStore,
+                store: self.app.sessionStore,
                 saveUninitialized: true,
                 resave: true
             })
@@ -872,7 +872,6 @@ function Application(appFolder, appConfig) {
     self.getSocketSession = function(socket, callback) {
         var cookies = unsignCookies(Cookie.parse(socket.handshake.headers.cookie), self.getHttpSessionSecret());
         var sid = cookies['connect.sid'];
-        // console.log(cookies);
         if(self.app.sessionStore)
             return self.app.sessionStore.get(sid, callback);
         else
@@ -906,8 +905,6 @@ function Application(appFolder, appConfig) {
         var dest = rec.dest || defaultRouting_.dest;
         src.on(rec.op, function(args, callback) {
             console.log("PROCESSING ROUTE".magenta.bold,args.op);
-
-
 
             if(rec.private && !args.token)
                 return callback({ error : "User must be logged in." })
