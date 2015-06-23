@@ -884,7 +884,8 @@ function Application(appFolder, appConfig) {
 
     self.getSocketSession = function(socket, callback) {
         var cookies = unsignCookies(Cookie.parse(socket.handshake.headers.cookie), self.getHttpSessionSecret());
-        var sid = cookies['connect.sid'];
+        var cookieId = (self.config.http && self.config.http.session && self.config.http.session.key)? self.config.http.session.key : 'connect.sid';
+        var sid = cookies[ cookieId ];
         // console.log(cookies);
         if(self.app.sessionStore)
             return self.app.sessionStore.get(sid, callback);
