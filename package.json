@@ -11,7 +11,6 @@
     "zetta-stats" : "*",
     "zetta-rpc" : "*",
     "zetta-translator" : "*",
-    "zetta-login" : "*",
     "zetta-base58" : "*",
     "getmac" : "*",
     "underscore" : "*",
