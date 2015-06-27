@@ -456,11 +456,22 @@ function Application(appFolder, appConfig) {
         return self._httpSessionSecret;
     }
 
+    self.getBaseUrl = function(req, locale){
+        var _locale = '';
+        if (locale === true) {
+            _locale = '/'+req._T.locale;
+        }else if (locale) {
+            _locale = '/'+locale;
+        };
+        return req.protocol + '://' + req.get('host')+_locale+'/';
+    }
+
     self.initExpressConfig = function(callback) {
         var ExpressSession = require('express-session');
 
         self.express = express;
         self.app = express();
+        self.app.locals.getBaseUrl = self.getBaseUrl;
 
         self.app.sessionSecret = self.getHttpSessionSecret();
 
