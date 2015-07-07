@@ -56,12 +56,16 @@ var Translator = require('zetta-translator');
 var ClientRPC = require('./lib/client-rpc');
 var Login = require('./lib/login');
 
+var _log_module_enable_ = process.argv.join(' ').match(/--log-module/ig);
+var _log_module_ = null;
 var __cluster_worker_id = process.env['ZETTA_CLUSTER_ID'];
 var _cl = console.log;
 console.log = function() {
     var args = Array.prototype.slice.call(arguments, 0);
     if(__cluster_worker_id !== undefined)
         args.unshift('['+__cluster_worker_id+'] ');
+    if(_log_module_enable_ && _log_module_)
+        args.unshift('['+_log_module_+'] ');
     args.unshift(zutils.tsString()+' ');
     return _cl.apply(console, args);
 }
@@ -231,6 +235,7 @@ function Application(appFolder, appConfig) {
 
     if(!self.pkg.name)
         throw new Error("package.json must contain module 'name' field");
+    _log_module_ = self.pkg.name;
 
     self.getConfig = function(name) { return getConfig(path.join(appFolder,'config', name)) }
     self.readJSON = readJSON;
