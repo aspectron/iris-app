@@ -927,7 +927,14 @@ function Application(appFolder, appConfig) {
     };
 
     self.getSocketSession = function(socket, callback) {
-        var cookies = unsignCookies(Cookie.parse(socket.handshake.headers.cookie), self.getHttpSessionSecret());
+        var cookies = null;
+        try {
+            cookies = unsignCookies(Cookie.parse(socket.handshake.headers.cookie || ''), self.getHttpSessionSecret());
+        } catch(ex) {
+            console.log(ex.stack);
+            return callback(ex, null);
+        }
+
 
         var cookieId = (self.config.http && self.config.http.session && self.config.http.session.key)? self.config.http.session.key : 'connect.sid';
         var sid = cookies[ cookieId ];
