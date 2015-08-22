@@ -55,6 +55,7 @@ var child_process = require('child_process');
 var Translator = require('zetta-translator');
 var ClientRPC = require('./lib/client-rpc');
 var Login = require('./lib/login');
+var HttpCombiner = require('./lib/combiner');
 
 var __cluster_worker_id = process.env['ZETTA_CLUSTER_ID'];
 var _cl = console.log;
@@ -1131,5 +1132,6 @@ module.exports = {
     getConfig : getConfig,
     inherits : util.inherits,
     ClientRPC : ClientRPC,
-    Login : Login
+    Login : Login,
+    HttpCombiner: HttpCombiner
 }
