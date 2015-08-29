@@ -55,6 +55,7 @@ var child_process = require('child_process');
 var Translator = require('zetta-translator');
 var ClientRPC = require('./lib/client-rpc');
 var Login = require('./lib/login');
+var HttpCombiner = require('./lib/combiner');
 
 var _log_module_enable_ = process.argv.join(' ').match(/--log-module/ig);
 var _log_module_ = null;
@@ -1143,5 +1144,6 @@ module.exports = {
     getConfig : getConfig,
     inherits : util.inherits,
     ClientRPC : ClientRPC,
-    Login : Login
+    Login : Login,
+    HttpCombiner: HttpCombiner
 }
