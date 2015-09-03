@@ -941,17 +941,24 @@ function Application(appFolder, appConfig) {
         var sid = cookies[ cookieId ];
 
         if(self.app.sessionStore)
-            return self.app.sessionStore.get(sid, function(err, session){
-                if (!session)
-                    return callback(err);
-
-                session.id = sid;
-
-                callback(err, session);
-            });
+            self.getSessionById(sid, callback);
         else
             callback(null, cookies);
     };
+
+    self.getSessionById = function(sid, callback){
+        if(!self.app.sessionStore)
+            return callback({error: "Session not initilized."});
+
+        self.app.sessionStore.get(sid, function(err, session){
+            if (!session)
+                return callback(err);
+
+            session.id = sid;
+
+            callback(err, session);
+        });
+    }
 
     self.getSocketSessionId = function(socket) {
 
