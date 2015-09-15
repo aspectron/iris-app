@@ -56,7 +56,7 @@ var Translator = require('iris-translator');
 var ClientRPC = require('./lib/client-rpc');
 var Login = require('./lib/login');
 var HttpCombiner = require('./lib/combiner');
-var Timer = require('./lib/timer');
+
 
 var _log_module_enable_ = process.argv.join(' ').match(/--log-module/ig);
 var _log_module_ = null;
@@ -1153,6 +1153,5 @@ module.exports = {
     inherits : util.inherits,
     ClientRPC : ClientRPC,
     Login : Login,
-    Timer: Timer,
     HttpCombiner: HttpCombiner
 }
