@@ -1,17 +1,17 @@
 {
-  "name": "zetta-app",
-  "description": "Zetta Toolkit - Application Framework",
+  "name": "iris-app",
+  "description": "IRIS Toolkit - Application Framework",
   "version": "0.1.28",
   "author": {
     "name": "ASPECTRON Inc.",
     "email": "info@aspectron.com"
   },
   "dependencies": {
-    "zetta-utils": "*",
-    "zetta-stats" : "*",
-    "zetta-rpc" : "*",
-    "zetta-translator" : "*",
-    "zetta-base58" : "*",
+    "iris-utils": "*",
+    "iris-stats" : "*",
+    "iris-rpc" : "*",
+    "iris-translator" : "*",
+    "iris-base58" : "*",
     "getmac" : "*",
     "underscore" : "*",
     "nodemailer" : "*",
@@ -45,15 +45,15 @@
     "framework",
     "json",
     "rpc",
-    "zetta"
+    "iris"
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/aspectron/zetta-app"
+    "url": "git://github.com/aspectron/iris-app"
   },
-  "main": "zetta-app",
+  "main": "iris-app",
   "files": [
-    "zetta-app.js",
+    "iris-app.js",
     "README.md"
   ],
   "scripts": {
@@ -64,8 +64,8 @@
   },
   "readmeFilename": "README.md",
   "bugs": {
-    "url": "https://github.com/aspectron/zetta-app/issues"
+    "url": "https://github.com/aspectron/iris-app/issues"
   },
   "license": "MIT",
-  "homepage": "https://github.com/aspectron/zetta-app"
+  "homepage": "https://github.com/aspectron/iris-app"
 }

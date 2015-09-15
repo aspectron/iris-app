@@ -1,5 +1,5 @@
 //
-// -- Zetta Toolkit - Application Framework
+// -- IRIS Toolkit - Application Framework
 //
 //  Copyright (c) 2011-2014 ASPECTRON Inc.
 //  All Rights Reserved.
@@ -42,9 +42,9 @@ var CookieSignature = require('cookie-signature');
 var Cookie = require('cookie');
 // var Cookies = require('cookies');
 
-var zutils = require('zetta-utils');
-var zstats = require('zetta-stats');
-var zrpc = require('zetta-rpc');
+var zutils = require('iris-utils');
+var zstats = require('iris-stats');
+var zrpc = require('iris-rpc');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var nodemailer = require('nodemailer');
@@ -52,7 +52,7 @@ var pickupTransport = require('nodemailer-pickup-transport');
 var mongo = require('mongodb');
 var os = require('os');
 var child_process = require('child_process');
-var Translator = require('zetta-translator');
+var Translator = require('iris-translator');
 var ClientRPC = require('./lib/client-rpc');
 var Login = require('./lib/login');
 var HttpCombiner = require('./lib/combiner');
@@ -60,7 +60,7 @@ var Timer = require('./lib/timer');
 
 var _log_module_enable_ = process.argv.join(' ').match(/--log-module/ig);
 var _log_module_ = null;
-var __cluster_worker_id = process.env['ZETTA_CLUSTER_ID'];
+var __cluster_worker_id = process.env['IRIS_CLUSTER_ID'];
 var _cl = console.log;
 console.log = function() {
     var args = Array.prototype.slice.call(arguments, 0);
@@ -319,7 +319,7 @@ function Application(appFolder, appConfig) {
 
     self.initCertificates = function(callback) {
         if(self.verbose)
-            console.log('zetta-app: loading certificates from ',appFolder+'/'+self.config.certificates);
+            console.log('iris-app: loading certificates from ',appFolder+'/'+self.config.certificates);
         if(self.certificates) {
             console.error("Warning! initCertificates() is called twice!".redBG.bold);
             callback && callback();
@@ -765,7 +765,7 @@ function Application(appFolder, appConfig) {
             console.log("Cluster: Spawning "+nWorkers+" workers");
 
             var runWorker = function(i) {
-                var worker = self.workers[i] = cluster.fork({ ZETTA_CLUSTER_ID : i });
+                var worker = self.workers[i] = cluster.fork({ IRIS_CLUSTER_ID : i });
 
                 // Optional: Restart worker on exit
                 worker.on('exit', function(worker, code, signal) {
@@ -792,7 +792,7 @@ function Application(appFolder, appConfig) {
         else
         if(cluster.isWorker)
         {
-            self.__cluster_worker_id = parseInt(process.env['ZETTA_CLUSTER_ID']);
+            self.__cluster_worker_id = parseInt(process.env['IRIS_CLUSTER_ID']);
 
             process.on('message', function(msg) {
                 if(!msg.op) {

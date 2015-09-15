@@ -1,7 +1,7 @@
 
-<polymer-element name="zetta-rpc" attributes="path timeout trace">
+<polymer-element name="iris-rpc" attributes="path timeout trace">
  <script>
-   Polymer('zetta-rpc', {
+   Polymer('iris-rpc', {
 
 //    id : 'main',
     path : '/rpc',
@@ -124,10 +124,10 @@
 </polymer-element>
 
 
-<polymer-element name="zetta-rpc-client" attributes="pair">
+<polymer-element name="iris-rpc-client" attributes="pair">
  <script>
  
-   Polymer('zetta-rpc-client', {
+   Polymer('iris-rpc-client', {
 //BRT.define('BRT.types.RPC.Client', function() {
 /*	var self = this;
 //	BRT.types.Events.apply(self, arguments);
@@ -169,7 +169,7 @@ BRT.define('BRT.subscribe', function(owner, options, fn) {
         fn : fn
     })
 
-    //var rpc = BRT.find('zetta-rpc#main');
+    //var rpc = BRT.find('iris-rpc#main');
 
     BRT.rpc.main.dispatch({
         op : 'subscribe',
@@ -195,7 +195,7 @@ BRT.define('BRT.subscribe', function(owner, options, fn) {
 })
 
 BRT.define('BRT.unsubscribe', function(owner, options) {
-    //var rpc = BRT.find('zetta-rpc#main');
+    //var rpc = BRT.find('iris-rpc#main');
     BRT.rpc.main.dispatch({
         op : 'unsubscribe',
         info : options

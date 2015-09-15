@@ -1,4 +1,4 @@
-zetta-app
+iris-app
 =========
 
-Zetta Toolkit - Application Framework
+IRIS Toolkit - Application Framework
