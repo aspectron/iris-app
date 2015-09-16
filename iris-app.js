@@ -52,7 +52,7 @@ var pickupTransport = require('nodemailer-pickup-transport');
 var mongo = require('mongodb');
 var os = require('os');
 var child_process = require('child_process');
-var Translator = require('iris-translator');
+// var Translator = require('iris-translator');
 var ClientRPC = require('./lib/client-rpc');
 var Login = require('./lib/login');
 var HttpCombiner = require('./lib/combiner');
@@ -301,7 +301,7 @@ function Application(appFolder, appConfig) {
 
     // ---
 
-    self.initTranslator = function(callback) {
+/*    self.initTranslator = function(callback) {
         if(self.config.translator) {
             var options = {
                 storagePath: path.join(appFolder,'config'),
@@ -316,6 +316,7 @@ function Application(appFolder, appConfig) {
 
         callback();
     }
+*/
 
     self.initCertificates = function(callback) {
         if(self.verbose)
@@ -560,8 +561,8 @@ function Application(appFolder, appConfig) {
         }
 
 
-        if(self.config.translator)
-            self.app.use(self.translator.useSession);
+//        if(self.config.translator)
+//            self.app.use(self.translator.useSession);
 
 
         /**

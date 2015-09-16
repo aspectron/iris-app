@@ -10,7 +10,6 @@
     "iris-utils": "*",
     "iris-stats" : "*",
     "iris-rpc" : "*",
-    "iris-translator" : "*",
     "iris-base58" : "*",
     "getmac" : "*",
     "underscore" : "*",
