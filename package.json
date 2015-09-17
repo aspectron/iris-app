@@ -1,7 +1,7 @@
 {
   "name": "iris-app",
   "description": "IRIS Toolkit - Application Framework",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "author": {
     "name": "ASPECTRON Inc.",
     "email": "info@aspectron.com"
@@ -53,6 +53,8 @@
   "main": "iris-app",
   "files": [
     "iris-app.js",
+    "lib",
+    "http",
     "README.md"
   ],
   "scripts": {
