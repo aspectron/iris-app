@@ -50,6 +50,7 @@ var getmac = require('getmac');
 var nodemailer = require('nodemailer');
 var pickupTransport = require('nodemailer-pickup-transport');
 var mongo = require('mongodb');
+var ConnectMongo = require('connect-mongo');
 var os = require('os');
 var child_process = require('child_process');
 // var Translator = require('iris-translator');
@@ -499,7 +500,7 @@ function Application(appFolder, appConfig) {
         self.app.use(flash({unsafe: false}));
 
         if(self.config.mongodb) {
-            var MongoStore = require('connect-mongo')(ExpressSession);
+            var MongoStore = ConnectMongo(ExpressSession);
             self.app.sessionStore = new MongoStore({url: self.config.mongodb.sessionStore || self.config.mongodb.main || self.config.mongodb});
             self.app.use(ExpressSession({
                 secret: self.app.sessionSecret,
