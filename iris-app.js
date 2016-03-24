@@ -44,7 +44,7 @@ var Cookie = require('cookie');
 
 var zutils = require('iris-utils');
 var zstats = require('iris-stats');
-var zrpc = require('iris-rpc');
+var irisRPC = require('iris-rpc');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
 var nodemailer = require('nodemailer');
@@ -63,7 +63,7 @@ var _log_module_enable_ = process.argv.join(' ').match(/--log-module/ig);
 var _log_module_ = null;
 var __cluster_worker_id = process.env['IRIS_CLUSTER_ID'];
 var _cl = console.log;
-console.log = function() {
+var __console_log = function() {
     var args = Array.prototype.slice.call(arguments, 0);
     if(__cluster_worker_id !== undefined)
         args.unshift('['+__cluster_worker_id+'] ');
@@ -229,6 +229,9 @@ function asyncSteps() {
 function Application(appFolder, appConfig) {
     var self = this;
     events.EventEmitter.call(this);
+
+    if(!appConfig || !appConfig.NO_TIMESTAMPS)
+        console.log = __console_log;
 
     self.appFolder = appFolder;
 
@@ -814,7 +817,7 @@ function Application(appFolder, appConfig) {
         if(!self.certificates)
             throw new Error("Application supervisor requires configured certificates");
         console.log("Connecting to supervisor(s)...".bold, self.config.supervisor.address);
-        self.supervisor = new zrpc.Client({
+        self.supervisor = new irisRPC.Client({
             address: self.config.supervisor.address,
             auth: self.config.supervisor.auth,
             certificates: self.certificates,
@@ -1155,5 +1158,6 @@ module.exports = {
     inherits : util.inherits,
     ClientRPC : ClientRPC,
     Login : Login,
-    HttpCombiner: HttpCombiner
+    HttpCombiner: HttpCombiner,
+    RPC : irisRPC
 }
