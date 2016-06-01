@@ -82,11 +82,15 @@ IRIS applications output logs to console.  IRIS framework does not use logging f
 to use that in your application.  Instead, when running iris based application, it should be executed using the `run.js` wrapper
 as follows `node run your-app`.
 
+`run.js` availables at https://github.com/aspectron/iris-app/blob/master/utils/run.js (just copy this file into your application folder)
+
 `run.js` will spawn `your-app` as a child process and pipe the application console output into `/logs/your-app.log` as well as dump the output back to console.  At any point, this allows you to execute `tail -f logs/your-app.log` to see the application output.  If you frequently restart the application (for example during debugging) you can run `tail -F logs/you-app.log`.  `-F` will force `tail` to re-open the stream even if it has been truncated due to process termination.
 
 The main benefit of this approach to logging is that in case you experience system errors (module buffer or stack overflow in NodeJs, you will be able to see the error dump, whereas an integrated logging system will not be able to record it as the message is typically displayed upon process termination.
 
-Logs are rotated daily.
+Logs are rotated daily and logs from the previous day are compressed into a `L-<DATE>.tgz` archive.
+
+*You must make sure that `your-app/logs` folder is present.*
 
 ## Creating SSL Certificates
 
@@ -136,10 +140,7 @@ One of the issues we have encountered is that you must stop the process before m
 
 Once running, you can check the execution state by doing `ps ax | grep your-app` or `ps ax | grep node`.
 
-When running IRIS applications, you should use `run.js` availables at https://github.com/aspectron/iris-app/blob/master/utils/run.js (just copy this file into your application folder). This file is a simple wrapper that starts your application, but captures `stdout` and streams it into the log file located in the `your-app/logs/` folder.  This allows you to easily check the output of your application while it is running as a daemon (instead of looking for logs files somewhere in `/var/log/upstart/...`).  To monitor log output you can easily execute `tail -F logs/your-app.js`.  `-F` flag tells `tail` to follow the file, constantly displaying new content as it is being added to it. 
-
-Logs are rotated daily and logs from the previous day are compressed into a `L-<DATE>.tgz` archive.
-*You must make sure that `your-app/logs` folder is present.*
+When running as a daemon, you can monitor application output by tailing its logs (described in the Logs section above).
 
 **NOTE on SECURITY:** remember, upstart runs your process as `root` user.  `root` user is necessary if you are opening ports below port 2000 (like http port 80).  If you want to open port 80 but run your process constrained to your user id, you must add `secureUnderUser : 'your-username'` in the `config/your-app.conf`.  This will start the process as a root, open up HTTP sockets below port 2000 and then downgrade process access rights to the username you have specified.
 
