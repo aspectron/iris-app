@@ -92,13 +92,87 @@ Logs are rotated daily.
 
 TBD
 
-## Deploying as Ubunti Upstart service
 
-TBD
+## Setting up NodeJS on your system
+
+We have done a number of nodejs deployments and each user has their own preference on how to handle things.  Node ecosystem has been evolving rapidly over years, as such we prefer not to install NodeJS onto the system but rather install it locally, in such way that it is available to run specific applications within a single user account (and another version can be available to run different applications in another user account).
+
+(This is especially important to the Upstart structure described below.)
+
+To download and install NodeJS on the system, you can do the following:
+
+- Copy the download URL from http://nodejs.org (you should be runnign 64bit versions)
+- `cd ~` (change to your home folder)
+- `wget <link>` (download the link to your home folder, for example: `wget https://nodejs.org/dist/v4.4.5/node-v4.4.5-linux-x64.tar.xz`)
+- `tar xf node-v4.4.5-linux-x64.tar.xz` (untar the file)
+- `ln -s node-v4.4.5-linux-x64.tar.xz node` (create `~/node` symlink)
+
+The last step is especially important as it allows you to have `node` folder (as a symlink) and if you update to future versions, you can simply re-create a symlink to a folder containing a different version of nodejs.  Also, in this setup, app your NPM activity (caches and globally installed modules will reside in `~/.npm`)
+
+Last important step is to add node to your path.  Edit a startup file used by bash shell: `~/.profile` (`nano ~/.profile`) to contain the following at the last line:
+
+```
+PATH="$HOME/node/bin:$PATH"
+```
+
+In-house, we keep everything in `~/releases` folder so our path is actually `PATH="$HOME/releases/node/bin:$PATH"`.
+
+Whatever is the path, it is important that upstart config (described below) can reference it via `../node`.
+
+Once the path has been added, you must exit and re-login into the shell.
+
+Once done, you can check if node is accessible by typing `node -v`.  If node runs and prints it's version number, you are all set.  You can now clone your repositories and do `npm install` in those folders.
+
+
+## Deploying as Ubuntu Upstart service
+
+There are multiple ways to run a process as a daemon in a linux system.  Our choice is upstart that comes with ubuntu.
+
+To run an application using upstart, you need to create `your-app.conf` file containing upstart configuration and place it into `/etc/init/` folder.
+
+Following this, you can manage the process (as a root) using `sudo start your-app`, `sudo stop your-app`, `sudo restart your-app`, where `your-app` is the name of your configuration file.
+
+One of the issues we have encountered is that you must stop the process before making any changes to `/etc/init/your-app.conf`.  Otherwise `sudo stop your-app` may not work.
+
+Once running, you can check the execution state by doing `ps ax | grep your-app` or `ps ax | grep node`.
+
+When running IRIS applications, you should use `run.js` availables at https://github.com/aspectron/iris-app/blob/master/utils/run.js (just copy this file into your application folder). This file is a simple wrapper that starts your application, but captures `stdout` and streams it into the log file located in the `your-app/logs/` folder.  This allows you to easily check the output of your application while it is running as a daemon (instead of looking for logs files somewhere in `/var/log/upstart/...`).  To monitor log output you can easily execute `tail -F logs/your-app.js`.  `-F` flag tells `tail` to follow the file, constantly displaying new content as it is being added to it. 
+
+Logs are rotated daily and logs from the previous day are compressed into a `L-<DATE>.tgz` archive.
+*You must make sure that `your-app/logs` folder is present.*
+
+**NOTE on SECURITY:** remember, upstart runs your process as `root` user.  `root` user is necessary if you are opening ports below port 2000 (like http port 80).  If you want to open port 80 but run your process constrained to your user id, you must add `secureUnderUser : 'your-username'` in the `config/your-app.conf`.  This will start the process as a root, open up HTTP sockets below port 2000 and then downgrade process access rights to the username you have specified.
+
+Here are the contents of the upstart `.conf` file:
+
+```
+# this should live in /etc/init
+description "YOUR-APP"
+
+# start process on system startup
+start on filesystem
+stop on shutdown
+
+# Automatically Respawn:
+respawn
+respawn limit 20 5
+
+script
+cd /home/userfolder/releases/your-app-folder
+exec ../node/bin/node run your-app
+end script
+
+```
 
 ## Project Configuration
 
-TBD
+IRIS `.conf` configuration files are JSON objects (but for convenience read in as JavaScript files, thus allowing comments in the file syntax).  When using `getConfig()` function (used internally to retrieve main application config) IRIS looks for `.conf` files, loads it and then looks for `.local.conf` file.  If found, `.local.conf` file is overlapped on top of the loaded `.conf` file, effectively merging them: adding new sub-objects if missing in `.conf` and replacing entries that are re-defined in `.local.conf`.
+
+This structure allows basic configuration files to be included in your repository, but security sensitive information or information specific to a deployment (dev, profuction etc.) to be created only in the local deployment.
+
+
+CONFIGURATION OPTIONS - TBD
+
 
 ## Examples
 
