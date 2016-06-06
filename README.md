@@ -21,12 +21,17 @@ Web Application User Interface & SaaS Features
 
 * [iris-i18n](https://github.com/aspectron/iris-i18n) - Multi-language content translation backend (allows manual site content translation into any language)
 * [iris-login](https://github.com/aspectron/iris-login) - User authentication framework
-* [iris-polymer](https://github.com/aspectron/iris-polymer) - Google Polymer components & content optimizers
+* [iris-polymer](https://github.com/aspectron/iris-polymer) - Google Polymer components & content optimizers (Used for application development)
+* [iris-mdl](https://github.com/aspectron/iris-mdl) - Google MDL components (Used for lightweight web site development)
 * [iris-rpc](https://github.com/aspectron/iris-rpc) - Cross-process encrypted RPC communication (JSON over TLS)
 * [iris-ha](https://github.com/aspectron/iris-ha) - High Availability functionality (UDP-broadcast driven master selection)
 * [iris-stats](https://github.com/aspectron/iris-stats) - Tracking of basic server statistics (RAM, Bandwidth, DiskSpace) with Graphite Interface
 * [iris-underscore](https://github.com/aspectron/iris-underscore) - Asynchronous extensions for the UnderscoreJS library
 * [iris-twitter](https://github.com/aspectron/iris-twitter) - Helper library for fetching user tweets
+* [iris-crypt](https://github.com/aspectron/iris-crypt) - Allows storing NodeJs modules in a single encrypted package file. (Allows to protect code with a per-user specific authentication key)
+* [iris-express-helper](https://github.com/aspectron/iris-express-helper) - Functionality to help control EJS page rendering flow.
+
+
 
 
 ## Typicall use of IRIS
