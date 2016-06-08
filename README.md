@@ -170,6 +170,54 @@ end script
 
 ```
 
+## Using NGINX as a proxy
+
+NGINX can help a NodeJs applications in a variety of ways.  One of the most important services it can provide FQDN-based routing for NodeJs HTTP servers - i.e. it can provide port 80 (HTTP) or 443 (HTTPS) connectivity and route/proxy to a different NodeJs application based on the domain name the IP is being accessed with.  This allows you to run server A on port 4001 with domain abc123x.com and server B on port 4002 with domain def456x.com, then configure NGINX to route port 80 to each of these servers respectfully based on the domain name the server being accessed with.
+
+In addition, NGINX can offload NodeJs from serving static folders.
+
+NGINX configuration files are located in `/etc/nginx/sites-available/<your-site>`. Once configured, to bring the site online you have to create a symlink in `/etc/nginx/sites-enabled/<your-site>`
+
+Here is an example of a site configuration file. It forces all HTTP requests to be redirected to HTTPS and provides static access to some of the folders:
+
+```
+
+server {
+        listen 80;
+        server_name 	your-site.com www.your-site.com;
+        return          301 https://your-site.com$request_uri;
+}
+
+
+server {
+        listen 443 ssl;
+        server_name www.your-site.com your-site.com;
+
+        ssl_certificate "/home/user/releases/your-app/certificates/your-app.crt";
+        ssl_certificate_key "/home/user/releases/your-app/certificates/your-app.key";
+
+        # disallow request body size larger than 2mb (change this if your app supports file upload to maximum file size!)
+        client_max_body_size 2m;
+
+        # root folder where http content resides
+        root /home/user/releases/your-app/http/;
+
+        # static folders relative to the root folder        
+        location /images/ { }
+        location /scripts/ { }
+        location /css/ { }
+
+        location / {
+                proxy_set_header X-Real-IP $remote_addr;
+                # specify 127.0.0.1 ip and port of your application
+                proxy_pass http://127.0.0.1:7676/;
+        }
+
+}
+
+```
+
+
 ## Project Configuration
 
 IRIS `.conf` configuration files are JSON objects (but for convenience read in as JavaScript files, thus allowing comments in the file syntax).  When using `getConfig()` function (used internally to retrieve main application config) IRIS looks for `.conf` files, loads it and then looks for `.local.conf` file.  If found, `.local.conf` file is overlapped on top of the loaded `.conf` file, effectively merging them: adding new sub-objects if missing in `.conf` and replacing entries that are re-defined in `.local.conf`.
