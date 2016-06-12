@@ -97,9 +97,6 @@ Logs are rotated daily and logs from the previous day are compressed into a `L-<
 
 *You must make sure that `your-app/logs` folder is present.*
 
-## Creating SSL Certificates
-
-TBD
 
 
 ## Setting up NodeJS on your system
@@ -226,6 +223,53 @@ This structure allows basic configuration files to be included in your repositor
 
 
 CONFIGURATION OPTIONS - TBD
+
+
+* `secureUnderUser : "<username>"` - 
+* `certificates : "<folder>"` -  
+* `mongodb : { main : "<url>"` - URL to the mongodb server, used for HTTP sessions as well as for generic MongoDb access.
+* `statsd : "<fqdn or ip>"` - FQDN or IP of the StatsD server used by iris-stats (allows monitoring of host statistics such as RAM, disk space and network traffic)
+
+```
+secureUnderUser : 'usern', 	// Lower process rights to this username 
+							//	(secures the process to unix user rights when 
+							//	starting up as root in order to open port 80 or 443)
+
+certificates : "<path>",	//	Location of certificates folder containing `.crt` and `.key` 
+							// files used by HTTPS server as well as iris-rpc
+
+mongodb : {
+	main : "<url>"			// url for main mongodb connection 
+							// used for HTTP session storage (if available)
+							// and default mongodb configuration
+}
+
+http : {
+	redirectToSSL : false,	// force redirection to HTTPS from HTTP server
+	port : 1234,			// HTTP/HTTPS server port
+	ssl : false,			// Enable SSL on above given port or not
+	engine : 'ejs',			// Use EJS content rendering engine (default)
+							// Note: most iris modules are compatible only with EJS)
+	session : {
+		key: "your-app-name",
+		secret: "your-random-string"
+	},
+	static : {				// list of static paths in order of access
+		"/" : "http"		// URL path -> folder (relative to project root)
+	}
+
+
+}
+```
+
+## Creating SSL Certificates
+
+Just like with configuration files, SSL certificates can be installed (typically) in `certificates/` folder as either `.crt`, `.key` and `.ca` files or `.local.crt`, `.local.key` and `.local.ca` files.
+
+If the system finds files with `.local` suffix, it will load these files.  Just like with configuration files, this allows installation of certificates local to the deployment environment without keeping these files in git repository.
+
+TBD
+
 
 
 ## Examples
