@@ -117,7 +117,7 @@ The last step is especially important as it allows you to have `node` folder (as
 
 Last important step is to add node to your path.  Edit a startup file used by bash shell: `~/.profile` (`nano ~/.profile`) to contain the following at the last line:
 
-```
+```bash
 PATH="$HOME/node/bin:$PATH"
 ```
 
@@ -148,7 +148,7 @@ When running as a daemon, you can monitor application output by tailing its logs
 
 Here are the contents of the upstart `.conf` file:
 
-```
+```bash
 # this should live in /etc/init
 description "YOUR-APP"
 
@@ -230,7 +230,7 @@ CONFIGURATION OPTIONS - TBD
 * `mongodb : { main : "<url>"` - URL to the mongodb server, used for HTTP sessions as well as for generic MongoDb access.
 * `statsd : "<fqdn or ip>"` - FQDN or IP of the StatsD server used by iris-stats (allows monitoring of host statistics such as RAM, disk space and network traffic)
 
-```
+```javascript
 secureUnderUser : 'usern', 	// Lower process rights to this username 
 							//	(secures the process to unix user rights when 
 							//	starting up as root in order to open port 80 or 443)
