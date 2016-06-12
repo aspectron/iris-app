@@ -262,11 +262,11 @@ http : {
 }
 ```
 
-## Creating SSL Certificates
+## SSL Certificates
 
 Just like with configuration files, SSL certificates can be installed (typically) in `certificates/` folder as either `.crt`, `.key` and `.ca` files or `.local.crt`, `.local.key` and `.local.ca` files.
 
-If the system finds files with `.local` suffix, it will load these files.  Just like with configuration files, this allows installation of certificates local to the deployment environment without keeping these files in git repository.
+If the system finds files with `.local` suffix, it will load these files instead of files that do not contain the suffix.  Just like with configuration files, this allows installation of certificates local in the deployment environment without keeping these files in git repository.
 
 TBD
 
