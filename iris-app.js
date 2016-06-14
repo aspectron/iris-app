@@ -322,6 +322,24 @@ function Application(appFolder, appConfig) {
     }
 */
 
+    function locateCertificateFile(filename, ignore) {
+        var file = path.join(appFolder,filename);
+        var parts = file.split('.');
+        parts.splice(parts.length-1, 0, '.local');
+        var local = parts.join();
+        if(fs.existsSync(local))
+            return local;
+        if(!ignore && !fs.existsSync(file)) {
+            console.log("Unable to locate certificate file:".red.bold, file.bold);
+            throw new Error("Unable to locate certificate file");
+        }
+        else
+        if(ignore && !fs.existsSync(file))
+            return null;
+
+        return file;
+    }
+
     self.initCertificates = function(callback) {
         if(self.verbose)
             console.log('iris-app: loading certificates from ',appFolder+'/'+self.config.certificates);
@@ -331,31 +349,44 @@ function Application(appFolder, appConfig) {
             return;
         }
 
+        var ca_chain;
         if(typeof(self.config.certificates) == 'string') {
 
             self.certificates = {
-                key: fs.readFileSync(path.join(appFolder,self.config.certificates)+'.key').toString(),
-                cert: fs.readFileSync(path.join(appFolder,self.config.certificates)+'.crt').toString(),
+                key: fs.readFileSync(locateCertificateFile(self.config.certificates+'.key')).toString(),
+                cert: fs.readFileSync(locateCertificateFile(self.config.certificates+'.crt')).toString(),
                 ca: [ ]
             }
+
+            ca_chain = self.config.certificates+'.ca';
         }
         else
         {
             self.certificates = {
-                key: fs.readFileSync(path.join(appFolder,self.config.certificates.key)).toString(),
-                cert: fs.readFileSync(path.join(appFolder,self.config.certificates.crt)).toString(),
+                key: fs.readFileSync(locateCertificateFile(self.config.certificates.key)).toString(),
+                cert: fs.readFileSync(locateCertificateFile(self.config.certificates.crt)).toString(),
                 ca: [ ]
             }
 
-            var cert = [ ]
-            var chain = fs.readFileSync(path.join(appFolder, self.config.certificates.ca)).toString().split('\n');
-            _.each(chain, function(line) {
-                cert.push(line);
-                if(line.match('/-END CERTIFICATE-/')) {
-                    self.certificates.ca.push(cert.join('\n'));
-                    cert = [ ]
-                }
-            })
+            ca_chain = self.config.certificates.ca;
+        }
+
+        if(ca_chain) {
+
+            var ca_chain_file = locateCertificateFile(ca_chain, true);
+
+            if(ca_chain_file) {
+
+                var cert = [ ]
+                var chain = fs.readFileSync(ca_chain_file).toString().split('\n');
+                _.each(chain, function(line) {
+                    cert.push(line);
+                    if(line.match('/-END CERTIFICATE-/')) {
+                        self.certificates.ca.push(cert.join('\n'));
+                        cert = [ ]
+                    }
+                })
+            }
         }
 
         callback && callback();
@@ -363,10 +394,9 @@ function Application(appFolder, appConfig) {
 
 
     self.initMonitoringInterfaces = function(callback) {
-        self.stats = new zstats.StatsD(self.config.statsd, self.uuid, self.pkg.name);
-//        self.stats = new zstats.StatsD(self.config.statsd, self.uuid, self.config.application);
-        self.profiler = new zstats.Profiler(self.stats);
-        self.monitor = new zstats.Monitor(self.stats, self.config.monitor);
+//        self.stats = new zstats.StatsD(self.config.statsd, self.uuid, self.pkg.name);
+//        self.profiler = new zstats.Profiler(self.stats);
+//        self.monitor = new zstats.Monitor(self.stats, self.config.monitor);
 
         callback();
     }
@@ -1021,9 +1051,9 @@ function Application(appFolder, appConfig) {
     // --
 
     function updateServerStats() {
-
-        self.pingDataObject.loadAvg = self.monitor.stats.loadAvg;
-        self.pingDataObject.memory = self.monitor.stats.memory;
+// TODO - stats -> state
+//        self.pingDataObject.loadAvg = self.monitor.state.system.loadAvg;
+//        self.pingDataObject.memory = self.monitor.state.system.memory;
 
         dpc(5 * 1000, updateServerStats)
     }
