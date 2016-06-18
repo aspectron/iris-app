@@ -1,5 +1,6 @@
 ## IRIS - SaaS / Web Application Foundation Framework
 
+[![dependencies Status](https://david-dm.org/aspectron/iris-app.svg)](https://david-dm.org/aspectron/iris-app#info=dependencies)
 [![license:mit](https://img.shields.io/badge/license-mit-blue.svg)](https://opensource.org/licenses/MIT)
 
 IRIS is a NodeJs foundation layer that allows creation of Web Applications 
