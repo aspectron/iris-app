@@ -74,7 +74,7 @@ IRIS imposes a specific file & folder structore for the web application as follo
 * `CONFIG/your-app.cfg` - main application configuration file
 * `CERTIFICATES/your-app.key` - optional: SSL certificates
 * `CERTIFICATES/your-app.crt` - optional: SSL certificates
-* `DEPLOY/UPSTART/your-app.conf` - optional: deployment configuration scripts
+* `DEPLOY/` - optional: deployment configuration scripts
 * `HTTP/` - optional: all content served via HTTP typically in subfolders scripts/ images/ styles/ etc
 * `LIB/` - recommended: various application related scripts
 * `LOGS/` - application logs
@@ -126,20 +126,43 @@ PATH="$HOME/node/bin:$PATH"
 
 In-house, we keep everything in `~/releases` folder so our path is actually `PATH="$HOME/releases/node/bin:$PATH"`.
 
-Whatever is the path, it is important that upstart config (described below) can reference it via `../node`.
+Whatever is the path, it is important that if you are using upstart config (described below) can reference it via `../node`.
 
 Once the path has been added, you must exit and re-login into the shell.
 
 Once done, you can check if node is accessible by typing `node -v`.  If node runs and prints it's version number, you are all set.  You can now clone your repositories and do `npm install` in those folders.
 
+## Deploying Systemd Service
+
+To run your application as a service using *systemd*, you need to create `your-app.service` file containing systemd configuration and place it into `/lib/systemd/system` folder.
+
+Onec installed, you can manage your process (as a root) using `sudo service your-app start`, `sudo service your-app stop`, `sudo service your-app restart`
+
+To see the status of your service you can run `systemctl status your-app.service`.  You can also see all running services using `systemctl status`.
+
+Example of `yout-app.service` file:
+
+```
+# /usr/lib/systemd/your-app.service
+
+[Unit]
+Description=Your App
+
+[Service]
+Type=simple
+PIDFile=/var/run/your-app.pid
+WorkingDirectory=/home/userfolder/releases/your-app
+ExecStart=/home/userfolder/node/bin/node run your-app
+
+[Install]
+WantedBy=multi-user.target
+```
 
 ## Deploying as Ubuntu Upstart service
 
-There are multiple ways to run a process as a daemon in a linux system.  Our choice is upstart that comes with ubuntu.
+To run your application as a service using *upstart*, you need to create `your-app.conf` file containing upstart configuration and place it into `/etc/init/` folder.
 
-To run an application using upstart, you need to create `your-app.conf` file containing upstart configuration and place it into `/etc/init/` folder.
-
-Following this, you can manage the process (as a root) using `sudo start your-app`, `sudo stop your-app`, `sudo restart your-app`, where `your-app` is the name of your configuration file.
+Following this, you can manage the process (as a root) using `sudo start your-app`, `sudo stop your-app`, `sudo restart your-app`.
 
 One of the issues we have encountered is that you must stop the process before making any changes to `/etc/init/your-app.conf`.  Otherwise `sudo stop your-app` may not work.
 
