@@ -42,8 +42,8 @@ var CookieSignature = require('cookie-signature');
 var Cookie = require('cookie');
 // var Cookies = require('cookies');
 
-var zutils = require('iris-utils');
-var zstats = require('iris-stats');
+var irisUtils = require('iris-utils');
+var irisStats = require('iris-stats');
 var irisRPC = require('iris-rpc');
 var exec = require('child_process').exec;
 var getmac = require('getmac');
@@ -69,7 +69,7 @@ var __console_log = function() {
         args.unshift('['+__cluster_worker_id+'] ');
     if(_log_module_enable_ && _log_module_)
         args.unshift('['+_log_module_+'] ');
-    args.unshift(zutils.tsString()+' ');
+    args.unshift(irisUtils.tsString()+' ');
     return _cl.apply(console, args);
 }
 function merge(dst, src) {
@@ -394,9 +394,9 @@ function Application(appFolder, appConfig) {
 
 
     self.initMonitoringInterfaces = function(callback) {
-//        self.stats = new zstats.StatsD(self.config.statsd, self.uuid, self.pkg.name);
-//        self.profiler = new zstats.Profiler(self.stats);
-//        self.monitor = new zstats.Monitor(self.stats, self.config.monitor);
+//        self.stats = new irisStats.StatsD(self.config.statsd, self.uuid, self.pkg.name);
+//        self.profiler = new irisStats.Profiler(self.stats);
+//        self.monitor = new irisStats.Monitor(self.stats, self.config.monitor);
 
         callback();
     }
@@ -458,7 +458,7 @@ function Application(appFolder, appConfig) {
 
                 var lp = self.config.mongodb[name].indexOf('@');
                 console.log("DB '" + (name) + "' connected", lp == -1 ? self.config.mongodb[name].bold : self.config.mongodb[name].substring(lp+1).bold );
-                zutils.bind_database_config(database, config.collections, function (err, db) {
+                irisUtils.bind_database_config(database, config.collections, function (err, db) {
                     if (err)
                         return callback(err);
                     _.extend(self.db, db);
@@ -481,7 +481,7 @@ function Application(appFolder, appConfig) {
             self.database = database;
 
             console.log("Database connected", self.config.mongodb);
-            zutils.bind_database_config(database, self.databaseCollections, function (err, db) {
+            irisUtils.bind_database_config(database, self.databaseCollections, function (err, db) {
                 if (err)
                     return callback(err);
                 _.extend(self.db, db);
@@ -1073,7 +1073,7 @@ function Application(appFolder, appConfig) {
 
     self.run = function(callback) {
 
-        var steps = new zutils.Steps();
+        var steps = new irisUtils.Steps();
 
         self.emit('init::begin', steps);
 
@@ -1153,7 +1153,7 @@ function Application(appFolder, appConfig) {
     self.caption = self.pkg.name;
     dpc(function() {
         if(self.isMaster && self.caption) {
-            zutils.render(self.caption.replace('-',' '), null, function(err, caption) {
+            irisUtils.render(self.caption.replace('-',' '), null, function(err, caption) {
                 console.log('\n'+caption);
                 dpc(function() {
                     self.run();
@@ -1189,5 +1189,7 @@ module.exports = {
     ClientRPC : ClientRPC,
     Login : Login,
     HttpCombiner: HttpCombiner,
-    RPC : irisRPC
+    RPC : irisRPC,
+    utils : irisUtils,
+    stats : irisStats
 }
