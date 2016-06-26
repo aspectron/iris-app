@@ -158,6 +158,12 @@ ExecStart=/home/userfolder/node/bin/node run your-app
 WantedBy=multi-user.target
 ```
 
+Once created, you must enable the service to autostart when system boots:
+
+```bash
+sudo systemctl enable your-app.service
+```
+
 ## Deploying as Ubuntu Upstart service
 
 To run your application as a service using *upstart*, you need to create `your-app.conf` file containing upstart configuration and place it into `/etc/init/` folder.
