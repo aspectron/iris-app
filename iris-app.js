@@ -233,6 +233,12 @@ function Application(appFolder, appConfig) {
     if(!appConfig || !appConfig.NO_TIMESTAMPS)
         console.log = __console_log;
 
+    self.log = {
+        'INFO' : 1,
+        'WARN' : 2,
+        'DEBUG' : 3
+    }
+
     self.appFolder = appFolder;
 
     self.pkg = readJSON(path.join(appFolder,'package.json'));
@@ -869,13 +875,13 @@ function Application(appFolder, appConfig) {
     self.initWebsocket_v1 = function(callback) {
         self.webSocketMap = [ ]
         self.webSockets = self.io.of(self.config.websocket.path).on('connection', function(socket) {
-            console.log("websocket "+socket.id+" connected");
+            self.verbose > self.log.DEBUG && console.log("websocket "+socket.id+" connected");
             self.emit('websocket::connect', socket);
             self.webSocketMap[socket.id] = socket;
             socket.on('disconnect', function() {
                 self.emit('websocket::disconnect', socket);
                 delete self.webSocketMap[socket.id];
-                console.log("websocket "+socket.id+" disconnected");
+                self.verbose > self.log.DEBUG && console.log("websocket "+socket.id+" disconnected");
             })
             socket.on('rpc::request', function(msg) {
                 try {

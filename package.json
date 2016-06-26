@@ -1,7 +1,7 @@
 {
   "name": "iris-app",
   "description": "IRIS Application Framework",
-  "version": "0.1.45",
+  "version": "0.1.46",
   "author": {
     "name": "ASPECTRON Inc.",
     "email": "info@aspectron.com"
@@ -22,9 +22,9 @@
     "express": "^4.14.0",
     "express-session": "^1.13.0",
     "getmac": "^1.2.1",
-    "iris-base58": "0.0.5",
+    "iris-base58": "^0.0.5",
     "iris-rpc": "^0.2.16",
-    "iris-stats": "0.0.16",
+    "iris-stats": "^0.0.20",
     "iris-utils": "^0.1.7",
     "jade": "^1.11.0",
     "method-override": "^2.3.6",
