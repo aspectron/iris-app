@@ -63,9 +63,6 @@ In Ubuntu/Debian based systems you can run:
 
 IRIS is typically ran along side of MongoDB.  If mongodb is configured, IRIS will use mongodb for HTTP session storage.  Otherwise it uses `ExpressSession.MemoryStore` memory storage (which is not persistent).
 
-## Dependencies
-
-IRIS depends on variety of modules,
 
 ## Folder Structure
 
@@ -300,10 +297,3 @@ Just like with configuration files, SSL certificates can be installed (typically
 
 If the system finds files with `.local` suffix, it will load these files instead of files that do not contain the suffix.  Just like with configuration files, this allows installation of certificates local in the deployment environment without keeping these files in git repository.
 
-TBD
-
-
-
-## Examples
-
-TBD
