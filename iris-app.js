@@ -167,7 +167,7 @@ function writeJSON(filename, data) {
     fs.writeFileSync(filename, JSON.stringify(data, null, '\t'));
 }
 
-GLOBAL.dpc = function(t,fn) { if(typeof(t) == 'function') setImmediate(t); else setTimeout(fn,t); }
+global.dpc = function(t,fn) { if(typeof(t) == 'function') setImmediate(t); else setTimeout(fn,t); }
 
 function asyncMap(_list, fn, callback) {
     if(!_list || !_.isArray(_list))
