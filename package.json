@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "basic-auth": "*",
+    "request": "*",
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.15.1",
     "connect": "^3.4.1",
