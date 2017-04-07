@@ -400,7 +400,7 @@ function Application(appFolder, appConfig) {
 
 
     self.initMonitoringInterfaces = function(callback) {
-//        self.stats = new irisStats.StatsD(self.config.statsd, self.uuid, self.pkg.name);
+        self.stats = new irisStats.StatsD(self.config.statsd, self.uuid, self.pkg.name);
 //        self.profiler = new irisStats.Profiler(self.stats);
 //        self.monitor = new irisStats.Monitor(self.stats, self.config.monitor);
 
