@@ -1197,5 +1197,8 @@ module.exports = {
     HttpCombiner: HttpCombiner,
     RPC : irisRPC,
     utils : irisUtils,
-    stats : irisStats
+    stats : irisStats,
+    asyncMap,
+    asyncLoop,
+    asyncSteps
 }
