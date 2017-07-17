@@ -532,8 +532,12 @@ function Application(appFolder, appConfig) {
             self.app.engine('ect', self.ectRenderer.render);
         }
       //self.app.use(require('body-parser')());//express.json());
-        self.app.use(require('body-parser').urlencoded({ extended: true }));
-        self.app.use(require('body-parser').json());
+        var urlParser = (self.config.bodyParser && self.config.bodyParser.urlencoded) ? self.config.bodyParser.urlencoded : { extended: true };
+        var jsonParser = (self.config.bodyParser && self.config.bodyParser.json) ? self.config.bodyParser.json : {};
+
+        self.app.use(require('body-parser').urlencoded(urlParser));
+        self.app.use(require('body-parser').json(jsonParser));
+
         self.app.use(require('method-override')());
         self.app.use(require('cookie-parser')(self.app.sessionSecret));
         self.app.use(flash({unsafe: false}));
