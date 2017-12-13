@@ -541,15 +541,15 @@ function Application(appFolder, appConfig) {
         if(self.config.mongodb) {
             var MongoStore = ConnectMongo(ExpressSession);
             self.app.sessionStore = new MongoStore({url: self.config.mongodb.sessionStore || self.config.mongodb.main || self.config.mongodb});
-            self.app.use(ExpressSession({
+            self.expressSession = ExpressSession({
                 secret: self.app.sessionSecret,
                 key: self.config.http.session.key,
                 cookie: self.config.http.session.cookie,
                 store: self.app.sessionStore,
                 saveUninitialized: true,
                 resave: true
-            }));
-
+            });
+            self.app.use(self.expressSession);
             return callback();
         }
         else
@@ -734,13 +734,113 @@ function Application(appFolder, appConfig) {
         }
     }
 
+    self.initWSTransports = function(){
+        var engineIO    = require("engine.io");
+        var transports  = engineIO.transports;
+        _.each(transports, function(Transport, type){
+            var orginalOnRequest = Transport.prototype.onRequest;
+            //console.log("Transport, type", orginalOnRequest, Transport, type)
+            if(!orginalOnRequest){
+                transports[type] = function(req){
+                    var transport = Transport(req);
+                    self.overrideWSTransport(transport, transport, req);
+                    return transport;
+                }
+            }else{
+                self.overrideWSTransport(Transport, null);
+            }
+        })
+    }
+
+    self.overrideWSTransport = function(proto, context){
+        var orginalOnRequest    = proto.onRequest;
+        if(proto._overrideWSTransport)
+            return;
+
+        proto._overrideWSTransport = true;
+        var cookieName          = self.getSessionCookieName();
+        var sessionSecrets      = self.getHttpSessionSecret();
+
+        proto.onRequest = function(req){
+            context = context || this;
+            orginalOnRequest.apply(context, arguments);
+            if(!req.sessionID)
+                return
+
+            var reqCookies = req.headers.cookie || {};
+            console.log("WSReqCookies:".redBG.white.bold, reqCookies)
+            if(_.isString(reqCookies))
+                reqCookies = Cookie.parse(reqCookies);
+
+            var cookieOptions = req.session.cookie;
+            //console.log("reqCookies", reqCookies, cookieOptions)
+
+            var signed          = 's:'+CookieSignature.sign(req.sessionID, sessionSecrets);
+            var sessionCookie   = Cookie.serialize(cookieName, signed, cookieOptions);
+
+            if(reqCookies[cookieName] == signed){
+                console.log("WS request already have sessionCookie")
+                return;
+            }
+            reqCookies[cookieName] = signed;
+            req.headers.cookie = reqCookies;
+
+            if(context._onHeaderAdded)
+                return
+
+            context._onHeaderAdded = true;
+            
+            context.on("headers", function(headers){
+                console.log("WS transport-headers", headers)
+                
+                var cookies = headers["Set-Cookie"] || [];
+                if(_.isArray(cookies)){
+                    cookies.push(sessionCookie)
+                }else{
+                    cookies = [sessionCookie, cookies];
+                }
+
+                headers["Set-Cookie"] = cookies;
+            })
+        }
+    }
+
+    self.allowWSRequest = function(req, fn){
+        var res = req.res;
+        if(!res){
+            res = {
+                end : function(){
+
+                }
+            }
+        }
+        self.expressSession(req, res, function(){
+            fn(null, true);
+        })   
+    }
+
 
     self.initHttpServer = function(callback) {
 
         var CERTIFICATES = (self.config.http.ssl && self.config.certificates) ? self.certificates : null;
 
         var server = CERTIFICATES ? https.createServer(CERTIFICATES, self.app) : http.createServer(self.app);
-        self.io = socketio.listen(server, { 'log level': 0, 'secure': CERTIFICATES ? true : false });
+        self.io = socketio.listen(server, {
+            'log level': 0, 'secure': CERTIFICATES ? true : false,
+            allowRequest: function(req, fn){
+                if(self.config.handleWSSession){
+                    self.allowWSRequest(req, fn)
+                }else{
+                    fn(null, true);
+                }
+            }
+        });
+
+        if(self.config.handleWSSession){
+            self.initWSTransports();
+        }
+
+        
         if(self.router && self.router.initWebSocket)
             self.router.initWebSocket(self.io);
         self.config.websocket && self.initWebsocket_v1(function(){});
@@ -968,6 +1068,10 @@ function Application(appFolder, appConfig) {
         });
         return ret;
     };
+
+    self.getSessionCookieName = function(){
+        return (self.config.http && self.config.http.session && self.config.http.session.key)? self.config.http.session.key : 'connect.sid';
+    }
 
     self.getSocketSession = function(socket, callback) {
         var cookies = null;
