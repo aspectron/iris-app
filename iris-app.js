@@ -734,6 +734,7 @@ function Application(appFolder, appConfig) {
         }
     }
 
+    /*
     self.initWSTransports = function(){
         var engineIO    = require("engine.io");
         var transports  = engineIO.transports;
@@ -804,10 +805,61 @@ function Application(appFolder, appConfig) {
             })
         }
     }
+    */
+
+    self.buildSesssionCookie = function(req){
+        if(!req.session || !req.sessionID)
+            return false;
+
+        var cookieName          = self.getSessionCookieName();
+        var signed              = 's:'+CookieSignature.sign(req.sessionID, self.getHttpSessionSecret());
+
+        console.log("req.session.user:"+req.session.user)
+        /*
+        var cookies             = req.headers.cookie || {};
+        if(_.isString(cookies))
+            cookies = Cookie.parse(cookies);
+
+        console.log("cookies", cookies)
+
+        if(cookies[cookieName] == signed){
+            console.log("Skipping WS cookie".red.bold)
+            return false;
+        }
+        */
+        return Cookie.serialize(cookieName, signed, req.session.cookie);
+    }
 
     self.allowWSRequest = function(req, fn){
         var res = req.res;
-        if(!res){
+
+        if(res){
+            var _writeHead = res.writeHead;
+            res.writeHead = function(statusCode, statusMessage, headers){
+                if(!headers){
+                    headers = statusMessage;
+                    statusMessage = null;
+                }
+
+                headers = headers || {};
+
+                var cookies = headers["Set-Cookie"] || [];
+                if(!_.isArray(cookies))
+                    cookies = [cookies];
+
+                var sessionCookie = self.buildSesssionCookie(req, headers);
+                if(sessionCookie)
+                    cookies.push(sessionCookie);
+                console.log("cookies".greenBG, cookies)
+
+                headers["Set-Cookie"] = cookies;
+
+                if(statusMessage)
+                    _writeHead.call(res, statusCode, statusMessage, headers);
+                else
+                    _writeHead.call(res, statusCode, headers);
+            }
+        }else{
             res = {
                 end : function(){
 
@@ -825,6 +877,23 @@ function Application(appFolder, appConfig) {
         var CERTIFICATES = (self.config.http.ssl && self.config.certificates) ? self.certificates : null;
 
         var server = CERTIFICATES ? https.createServer(CERTIFICATES, self.app) : http.createServer(self.app);
+        
+        server.on("upgrade", function(req, socket, head){
+            /*/console.log("socket upgrade".red, socket)
+            var _write = socket.write;
+            socket.write = function(a){
+                console.log("a$$$".redBG, a+"")
+                _write.apply(socket, arguments);
+            }
+            */
+
+            self.io.engine.ws.once("headers", function(headers){
+                //console.log("a#########".redBG, headers)
+                var sessionCookie = self.buildSesssionCookie(req, headers);
+                if(sessionCookie)
+                    headers[headers.length] = "Set-Cookie: "+sessionCookie;
+            })
+        })
         self.io = socketio.listen(server, {
             'log level': 0, 'secure': CERTIFICATES ? true : false,
             allowRequest: function(req, fn){
@@ -836,9 +905,12 @@ function Application(appFolder, appConfig) {
             }
         });
 
+        /*
+        console.log("self.io", self.io.eio.ws)
         if(self.config.handleWSSession){
             self.initWSTransports();
         }
+        */
 
         
         if(self.router && self.router.initWebSocket)
