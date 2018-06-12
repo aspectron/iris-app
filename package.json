@@ -1,7 +1,7 @@
 {
   "name": "iris-app",
   "description": "IRIS Application Framework",
-  "version": "0.1.61",
+  "version": "0.1.62",
   "author": {
     "name": "ASPECTRON Inc.",
     "email": "info@aspectron.com"
@@ -27,7 +27,6 @@
     "iris-rpc": "*",
     "iris-stats": "*",
     "iris-utils": "*",
-    "jade": "^1.11.0",
     "method-override": "^2.3.6",
     "mongodb": "^2.1.21",
     "node-uuid": "^1.4.7",
@@ -35,7 +34,7 @@
     "nodemailer-pickup-transport": "*",
     "notp": "^2.0.3",
     "serve-static": "^1.11.1",
-    "socket.io": "^1.4.6",
+    "socket.io": "^2.1.1",
     "thirty-two": "*",
     "underscore": "^1.8.3"
   },
