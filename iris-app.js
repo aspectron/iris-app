@@ -1055,43 +1055,46 @@ function Application(appFolder, appConfig) {
                 delete self.webSocketMap[socket.id];
                 self.verbose > self.log.DEBUG && console.log("websocket "+socket.id+" disconnected");
             })
-            socket.on('rpc::request', function(msg) {
-                try {
-                    var listeners = self.listeners('ws::'+msg.req.op);
-                    if(listeners.length == 1) {
-                        listeners[0].call(socket, msg.req, function(err, resp) {
+
+            if(!appConfig.disableNativeWebsocketRPC) {
+                socket.on('rpc::request', function(msg) {
+                    try {
+                        var listeners = self.listeners('ws::'+msg.req.op);
+                        if(listeners.length == 1) {
+                            listeners[0].call(socket, msg.req, function(err, resp) {
+                                socket.emit('rpc::response', {
+                                    _resp : msg._req,
+                                    err : err,
+                                    resp : resp,
+                                });
+                            })
+                        }
+                        else
+                        if(listeners.length)
+                        {
                             socket.emit('rpc::response', {
                                 _resp : msg._req,
-                                err : err,
-                                resp : resp,
+                                err : { error : "Too many handlers for '"+msg.req.op+"'" }
                             });
-                        })
+                        }
+                        else
+                        {
+                            socket.emit('rpc::response', {
+                                _resp : msg._req,
+                                err : { error : "No such handler '"+msg.req.op+"'" }
+                            });
+                        }
                     }
-                    else
-                    if(listeners.length)
-                    {
-                        socket.emit('rpc::response', {
-                            _resp : msg._req,
-                            err : { error : "Too many handlers for '"+msg.req.op+"'" }
-                        });
-                    }
-                    else
-                    {
-                        socket.emit('rpc::response', {
-                            _resp : msg._req,
-                            err : { error : "No such handler '"+msg.req.op+"'" }
-                        });
-                    }
-                }
-                catch(ex) { console.error(ex.stack); }
-            });
+                    catch(ex) { console.error(ex.stack); }
+                });
 
-            socket.on('message', function(msg) {
-                try {
-                    self.emit('ws::'+msg.op, msg, socket);
-                }
-                catch(ex) { console.error(ex.stack); }
-            });
+                socket.on('message', function(msg) {
+                    try {
+                        self.emit('ws::'+msg.op, msg, socket);
+                    }
+                    catch(ex) { console.error(ex.stack); }
+                });
+            }
         });
 
         callback();
