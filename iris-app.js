@@ -850,7 +850,7 @@ function Application(appFolder, appConfig) {
                 var sessionCookie = self.buildSesssionCookie(req, headers);
                 if(sessionCookie)
                     cookies.push(sessionCookie);
-                console.log("cookies".greenBG, cookies)
+                //console.log("cookies".greenBG, cookies)
 
                 headers["Set-Cookie"] = cookies;
 
@@ -1044,53 +1044,53 @@ function Application(appFolder, appConfig) {
         })
     }
 
-    self.initWebsocket_v1 = function(callback) {
-        self.webSocketMap = [ ]
-        self.webSockets = self.io.of(self.config.websocket.path).on('connection', function(socket) {
-            self.verbose > self.log.DEBUG && console.log("websocket "+socket.id+" connected");
-            self.emit('websocket::connect', socket);
-            self.webSocketMap[socket.id] = socket;
-            socket.on('disconnect', function() {
-                self.emit('websocket::disconnect', socket);
-                delete self.webSocketMap[socket.id];
-                self.verbose > self.log.DEBUG && console.log("websocket "+socket.id+" disconnected");
+    this.initWebsocket_v1 = (callback)=>{
+        this.webSocketMap = [ ]
+        this.webSockets = this.io.of(this.config.websocket.path).on('connection', (socket)=>{
+            this.verbose > this.log.DEBUG && console.log("websocket "+socket.id+" connected");
+            this.emit('websocket::connect', socket);
+            this.webSocketMap[socket.id] = socket;
+            socket.on('disconnect', ()=>{
+                this.emit('websocket::disconnect', socket);
+                delete this.webSocketMap[socket.id];
+                this.verbose > this.log.DEBUG && console.log("websocket "+socket.id+" disconnected");
             })
 
-            if(!appConfig.disableNativeWebsocketRPC) {
-                socket.on('rpc::request', function(msg) {
+            if(!appConfig || !appConfig.disableNativeWebsocketRPC) {
+                socket.on('rpc::request', (msg) => {
+                    this.verbose && console.log('rpc::request',msg);
                     try {
-                        var listeners = self.listeners('ws::'+msg.req.op);
+                        let { req : { subject, data }, rid } = msg;
+
+                        var listeners = this.listeners(subject);
                         if(listeners.length == 1) {
-                            listeners[0].call(socket, msg.req, function(err, resp) {
+                            let callback = (error, data) => {
                                 socket.emit('rpc::response', {
-                                    _resp : msg._req,
-                                    err : err,
-                                    resp : resp,
+                                    rid, error, data
                                 });
-                            })
-                        }
-                        else
-                        if(listeners.length)
-                        {
+                            }
+
+                            listeners[0](data, callback, { subject, socket, rpc : this });
+                        }else if(listeners.length){
                             socket.emit('rpc::response', {
-                                _resp : msg._req,
-                                err : { error : "Too many handlers for '"+msg.req.op+"'" }
+                                rid,
+                                error : `Too many handlers for ${subject}`
                             });
-                        }
-                        else
-                        {
+                        }else{
                             socket.emit('rpc::response', {
-                                _resp : msg._req,
-                                err : { error : "No such handler '"+msg.req.op+"'" }
+                                rid,
+                                error : `No handler for ${subject}` 
                             });
                         }
                     }
                     catch(ex) { console.error(ex.stack); }
                 });
 
-                socket.on('message', function(msg) {
+                socket.on('message', (msg) => {
+                    this.verbose && console.log('RPC-message:',msg);
                     try {
-                        self.emit('ws::'+msg.op, msg, socket);
+                        let { subject, data } = msg;
+                        this.emit(subject, data, { subject, socket, rpc : this });
                     }
                     catch(ex) { console.error(ex.stack); }
                 });
