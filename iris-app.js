@@ -79,28 +79,29 @@ function merge(dst, src) {
         else { if(_.isArray(src)) dst.push(v); else dst[k] = v; }
     })
 }
-function getConfig(name) {
-
-    var filename = name+'.conf';
-    var host_filename = name+'.'+os.hostname()+'.conf';
-    var local_filename = name+'.local.conf';
-
-    var data = [ ]; // undefined;
-
-    fs.existsSync(filename) && data.push(fs.readFileSync(filename) || null);
-    fs.existsSync(host_filename) && data.push(fs.readFileSync(host_filename) || null);
-    fs.existsSync(local_filename) && data.push(fs.readFileSync(local_filename) || null);
+function getConfig(name, defaults) {
+    let data = [ ];
+    [
+        name+'.conf', 
+        name+'.'+os.hostname()+'.conf',
+        name+'.local.conf',
+        name,
+        name+'.'+os.hostname(), 
+        name+'.local'
+    ].forEach((filename) => {
+        if(fs.existsSync(filename)) 
+            data.push(fs.readFileSync(filename) || null);
+    })
 
     if(!data[0] && !data[1]) {
-        console.error("Unable to read config file:"+(filename+'').magenta.bold);
-        throw new Error("Unable to read config file:"+(filename+''));
+        return defaults;
     }
 
-    var o = { }
-    _.each(data, function(conf) {
+    let o = defaults || { }
+    data.forEach((conf) => {
         if(!conf || !conf.toString('utf-8').length)
             return;
-        var layer = eval('('+conf.toString('utf-8')+')');
+        let layer = eval('('+conf.toString('utf-8')+')');
         merge(o, layer);
     })
 
@@ -814,7 +815,7 @@ function Application(appFolder, appConfig) {
         var cookieName          = self.getSessionCookieName();
         var signed              = 's:'+CookieSignature.sign(req.sessionID, self.getHttpSessionSecret());
 
-        console.log("req.session.user:"+req.session.user)
+        // console.log("req.session.user:"+req.session.user)
         /*
         var cookies             = req.headers.cookie || {};
         if(_.isString(cookies))
