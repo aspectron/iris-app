@@ -459,7 +459,6 @@ function Application(appFolder, appConfig) {
 
             var dbUrl = new URL(db);
             var databaseName = dbUrl.pathname.replace("/", "")
-            console.log("dbUrl", databaseName)
             if(!databaseName)
                 return callback({error: `DB ${name} config url dont have database name.`})
 
