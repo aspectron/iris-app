@@ -1,7 +1,7 @@
 {
   "name": "iris-app",
   "description": "IRIS Application Framework",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "author": {
     "name": "ASPECTRON Inc.",
     "email": "info@aspectron.com"
@@ -12,7 +12,7 @@
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.15.1",
     "connect": "^3.4.1",
-    "connect-mongo": "^1.2.0",
+    "connect-mongo": "*",
     "cookie": "^0.3.1",
     "cookie-parser": "^1.4.3",
     "cookie-session": "*",
@@ -28,7 +28,7 @@
     "iris-stats": "*",
     "iris-utils": "*",
     "method-override": "^2.3.6",
-    "mongodb": "^2.1.21",
+    "mongodb": "*",
     "node-uuid": "^1.4.7",
     "nodemailer": "^2.4.2",
     "nodemailer-pickup-transport": "*",

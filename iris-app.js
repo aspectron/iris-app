@@ -50,7 +50,7 @@ var getmac = require('getmac');
 var nodemailer = require('nodemailer');
 var pickupTransport = require('nodemailer-pickup-transport');
 var mongo = require('mongodb');
-var ConnectMongo = require('connect-mongo/es5');
+var ConnectMongo = require('connect-mongo');
 var os = require('os');
 var child_process = require('child_process');
 // var Translator = require('iris-translator');
@@ -457,10 +457,17 @@ function Application(appFolder, appConfig) {
             if(!db)
                 throw new Error("Config missing database configuration for '"+name+"'");
 
-            mongo.MongoClient.connect(db, function (err, database) {
+            var dbUrl = new URL(db);
+            var databaseName = dbUrl.pathname.replace("/", "")
+            console.log("dbUrl", databaseName)
+            if(!databaseName)
+                return callback({error: `DB ${name} config url dont have database name.`})
+
+            mongo.MongoClient.connect(db, function (err, client) {
                 if (err)
                     return callback(err);
 
+                let database = client.db(databaseName);
                 self.databases[name] = database;
 
                 var lp = self.config.mongodb[name].indexOf('@');
