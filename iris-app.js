@@ -539,7 +539,7 @@ function Application(appFolder, appConfig) {
             self.app.engine('ect', self.ectRenderer.render);
         }
       //self.app.use(require('body-parser')());//express.json());
-        self.app.use(require('body-parser').urlencoded({ extended: true }));
+        self.app.use(require('body-parser').urlencoded({ extended: true, parameterLimit:2500 }));
         self.app.use(require('body-parser').json());
         self.app.use(require('method-override')());
         self.app.use(require('cookie-parser')(self.app.sessionSecret));
