@@ -462,7 +462,7 @@ function Application(appFolder, appConfig) {
             if(!databaseName)
                 return callback({error: `DB ${name} config url dont have database name.`})
 
-            mongo.MongoClient.connect(db, function (err, client) {
+            mongo.MongoClient.connect(db, {useUnifiedTopology:true}, function (err, client) {
                 if (err)
                     return callback(err);
 
@@ -487,7 +487,7 @@ function Application(appFolder, appConfig) {
         self.db = { }
         self.databases = { }
 
-        mongo.MongoClient.connect(self.config.mongodb, function (err, database) {
+        mongo.MongoClient.connect(self.config.mongodb, {useUnifiedTopology:true}, function (err, database) {
             if (err)
                 return callback(err);
 
